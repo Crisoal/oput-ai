@@ -27,21 +27,23 @@ export const BoltBadge: React.FC<BoltBadgeProps> = ({
   return (
     <button
       onClick={handleClick}
-      className={`flex items-center justify-center w-10 h-10 rounded-full transition-all duration-200 hover:scale-105 overflow-hidden ${className}`}
+      className={`flex items-center justify-center w-10 h-10 transition-all duration-200 hover:scale-105 ${className}`}
       title="Built with Bolt.new"
     >
       <img
         src="https://drive.google.com/uc?export=view&id=1NSb2PlpCwxZCwewmSqpIvmAiu4ZAHB55"
         alt="Bolt.new"
-        className="w-full h-full object-contain"
+        className="w-10 h-10 object-contain"
         onError={(e) => {
-          // Fallback to SVG if image fails to load
+          // Fallback to white SVG if image fails to load
           const target = e.target as HTMLImageElement;
           target.style.display = 'none';
           target.parentElement!.innerHTML = `
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="${variant === 'white' ? '#000' : '#fff'}" />
-            </svg>
+            <div class="flex items-center justify-center w-10 h-10 rounded-full bg-white">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="#000" />
+              </svg>
+            </div>
           `;
         }}
       />
