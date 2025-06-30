@@ -107,6 +107,7 @@ export const OpportunityResults: React.FC<OpportunityResultsProps> = ({
       'Requirements',
       'GPA Requirement',
       'Citizenship Requirements',
+      'Language Requirements',
       'Application URL',
       'Created Date'
     ];
@@ -123,20 +124,21 @@ export const OpportunityResults: React.FC<OpportunityResultsProps> = ({
       (opp as any).matchScore || 'N/A',
       opp.requirements || 'N/A',
       opp.gpa_requirement || 'N/A',
-      opp.citizenship_requirements?.join(', ') || 'N/A',
+      Array.isArray(opp.citizenship_requirements) ? opp.citizenship_requirements.join(', ') : opp.citizenship_requirements || 'N/A',
+      typeof opp.language_requirements === 'object' ? JSON.stringify(opp.language_requirements) : opp.language_requirements || 'N/A',
       opp.application_url || 'N/A',
       new Date(opp.created_at).toLocaleDateString()
     ]);
 
     const csvContent = [headers, ...csvData]
-      .map(row => row.map(cell => `"${cell}"`).join(','))
+      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
       .join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `oput_opportunities_results_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `oput_cybersecurity_opportunities_${new Date().toISOString().split('T')[0]}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -170,9 +172,10 @@ export const OpportunityResults: React.FC<OpportunityResultsProps> = ({
     ...opp,
     matchScore: (opp as any).matchScore || Math.floor(Math.random() * 30) + 70, // 70-100% range
     action_items: (opp as any).action_items || [
-      'Review eligibility requirements',
-      'Prepare academic transcripts',
-      'Write personal statement',
+      'Review eligibility requirements carefully',
+      'Prepare academic transcripts and certificates',
+      'Write compelling personal statement',
+      'Gather strong letters of recommendation',
       'Submit application before deadline'
     ]
   }));
@@ -189,7 +192,7 @@ export const OpportunityResults: React.FC<OpportunityResultsProps> = ({
               Found {filteredOpportunities.length} of {opportunities.length} Opportunities
             </h2>
             <p className="text-white/60">
-              Ranked by eligibility match and success probability
+              Cybersecurity scholarships and fellowships ranked by eligibility match
             </p>
           </div>
           
