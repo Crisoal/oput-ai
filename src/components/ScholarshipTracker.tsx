@@ -19,6 +19,13 @@ export const ScholarshipTracker: React.FC<ScholarshipTrackerProps> = ({
   const [sortBy, setSortBy] = useState<'deadline' | 'match_score' | 'status'>('deadline');
   const [filterStatus, setFilterStatus] = useState<string>('all');
 
+  // Auto-download CSV when component mounts and opportunities exist
+  useEffect(() => {
+    if (opportunities.length > 0) {
+      downloadCSV();
+    }
+  }, []);
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'not_started': return 'text-gray-400 bg-gray-400/20';
@@ -74,30 +81,47 @@ export const ScholarshipTracker: React.FC<ScholarshipTrackerProps> = ({
   });
 
   const downloadCSV = () => {
+    if (opportunities.length === 0) {
+      alert('No opportunities to download. Please find some opportunities first through the chat.');
+      return;
+    }
+
     const headers = [
       'Title',
       'Institution',
       'Type',
+      'Level',
+      'Field',
+      'Country',
       'Deadline',
       'Funding Amount',
-      'Match Score',
+      'Match Score (%)',
+      'Success Probability (%)',
       'Application Status',
       'Days Until Deadline',
       'Action Items',
-      'Application URL'
+      'Requirements',
+      'Application URL',
+      'Created Date'
     ];
 
     const csvData = opportunities.map(opp => [
       opp.opportunity.title,
       opp.opportunity.institution,
       opp.opportunity.type,
+      opp.opportunity.level,
+      opp.opportunity.field || 'N/A',
+      opp.opportunity.country,
       opp.opportunity.deadline,
-      opp.opportunity.funding_amount,
-      `${opp.match_score}%`,
+      `$${opp.opportunity.funding_amount.toLocaleString()}`,
+      opp.match_score,
+      opp.success_probability,
       opp.application_status.replace('_', ' '),
       getDaysUntilDeadline(opp.opportunity.deadline),
       opp.action_items.join('; '),
-      opp.opportunity.application_url
+      opp.opportunity.requirements || 'N/A',
+      opp.opportunity.application_url || 'N/A',
+      new Date(opp.created_at).toLocaleDateString()
     ]);
 
     const csvContent = [headers, ...csvData]
@@ -108,11 +132,12 @@ export const ScholarshipTracker: React.FC<ScholarshipTrackerProps> = ({
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `scholarship_tracker_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `oput_opportunities_${new Date().toISOString().split('T')[0]}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   if (opportunities.length === 0) {
@@ -226,6 +251,14 @@ export const ScholarshipTracker: React.FC<ScholarshipTrackerProps> = ({
                     <div className="flex items-center gap-2">
                       <span>💰</span>
                       <span>Funding: ${trackedOpp.opportunity.funding_amount.toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span>🎓</span>
+                      <span>Level: {trackedOpp.opportunity.level}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span>📚</span>
+                      <span>Field: {trackedOpp.opportunity.field}</span>
                     </div>
                   </div>
                 </div>
