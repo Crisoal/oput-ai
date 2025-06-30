@@ -2,14 +2,14 @@ import { Opportunity } from '../types';
 
 export const cybersecurityOpportunities: Opportunity[] = [
   {
-    id: 'commonwealth-cybersec-2024',
+    id: 'commonwealth-cybersec-2025',
     title: 'Commonwealth Scholarship for Cybersecurity Masters',
     institution: 'Commonwealth Scholarship Commission',
     type: 'scholarship',
     field: 'Cybersecurity',
     level: 'graduate',
     country: 'United Kingdom',
-    deadline: '2024-12-01',
+    deadline: '2025-12-01',
     funding_amount: 45000,
     requirements: 'Bachelor\'s degree in Computer Science or related field, minimum 2:1 classification, demonstrated interest in cybersecurity',
     eligibility_criteria: {
@@ -27,14 +27,14 @@ export const cybersecurityOpportunities: Opportunity[] = [
     updated_at: new Date().toISOString()
   },
   {
-    id: 'chevening-cybersec-2024',
+    id: 'chevening-cybersec-2025',
     title: 'Chevening Scholarship - Cybersecurity Focus',
     institution: 'UK Government (FCDO)',
     type: 'scholarship',
     field: 'Cybersecurity',
     level: 'graduate',
     country: 'United Kingdom',
-    deadline: '2024-11-07',
+    deadline: '2025-11-05',
     funding_amount: 50000,
     requirements: 'Bachelor\'s degree, 2+ years work experience, leadership potential, English proficiency',
     eligibility_criteria: {
@@ -53,14 +53,14 @@ export const cybersecurityOpportunities: Opportunity[] = [
     updated_at: new Date().toISOString()
   },
   {
-    id: 'oxford-cybersec-scholarship',
+    id: 'oxford-cybersec-scholarship-2025',
     title: 'Oxford Cybersecurity Excellence Scholarship',
     institution: 'University of Oxford',
     type: 'scholarship',
     field: 'Cybersecurity',
     level: 'graduate',
     country: 'United Kingdom',
-    deadline: '2024-12-15',
+    deadline: '2025-01-15',
     funding_amount: 55000,
     requirements: 'First-class honours degree or equivalent, exceptional academic merit, research potential in cybersecurity',
     eligibility_criteria: {
@@ -78,14 +78,14 @@ export const cybersecurityOpportunities: Opportunity[] = [
     updated_at: new Date().toISOString()
   },
   {
-    id: 'imperial-cybersec-fellowship',
+    id: 'imperial-cybersec-fellowship-2025',
     title: 'Imperial College Cybersecurity Research Fellowship',
     institution: 'Imperial College London',
     type: 'fellowship',
     field: 'Cybersecurity',
     level: 'graduate',
     country: 'United Kingdom',
-    deadline: '2025-01-31',
+    deadline: '2025-03-31',
     funding_amount: 48000,
     requirements: 'Strong background in computer science, demonstrated research ability, interest in cybersecurity research',
     eligibility_criteria: {
@@ -103,14 +103,14 @@ export const cybersecurityOpportunities: Opportunity[] = [
     updated_at: new Date().toISOString()
   },
   {
-    id: 'warwick-cybersec-grant',
+    id: 'warwick-cybersec-grant-2025',
     title: 'University of Warwick Cybersecurity Excellence Grant',
     institution: 'University of Warwick',
     type: 'grant',
     field: 'Cybersecurity',
     level: 'graduate',
     country: 'United Kingdom',
-    deadline: '2024-11-30',
+    deadline: '2025-02-28',
     funding_amount: 42000,
     requirements: 'Bachelor\'s degree in relevant field, strong academic record, commitment to cybersecurity field',
     eligibility_criteria: {
@@ -128,14 +128,14 @@ export const cybersecurityOpportunities: Opportunity[] = [
     updated_at: new Date().toISOString()
   },
   {
-    id: 'southampton-cybersec-scholarship',
+    id: 'southampton-cybersec-scholarship-2025',
     title: 'Southampton Cybersecurity Innovation Scholarship',
     institution: 'University of Southampton',
     type: 'scholarship',
     field: 'Cybersecurity',
     level: 'graduate',
     country: 'United Kingdom',
-    deadline: '2025-02-28',
+    deadline: '2025-04-30',
     funding_amount: 40000,
     requirements: 'Good honours degree, interest in cybersecurity innovation, potential for research excellence',
     eligibility_criteria: {
@@ -153,40 +153,14 @@ export const cybersecurityOpportunities: Opportunity[] = [
     updated_at: new Date().toISOString()
   },
   {
-    id: 'cisco-cybersec-scholarship',
-    title: 'Cisco Cybersecurity Scholarship Program',
-    institution: 'Cisco Systems',
-    type: 'scholarship',
-    field: 'Cybersecurity',
-    level: 'graduate',
-    country: 'United Kingdom',
-    deadline: '2024-12-31',
-    funding_amount: 35000,
-    requirements: 'Pursuing cybersecurity degree, demonstrated technical aptitude, commitment to cybersecurity career',
-    eligibility_criteria: {
-      gpa_minimum: 3.0,
-      technical_aptitude: true,
-      career_commitment: 'cybersecurity',
-      internship_opportunity: true
-    },
-    gpa_requirement: 3.0,
-    citizenship_requirements: ['Any'],
-    language_requirements: {
-      english: 'Professional working proficiency'
-    },
-    application_url: 'https://www.cisco.com/c/en/us/about/csr/impact/education.html',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  },
-  {
-    id: 'british-council-cybersec',
+    id: 'british-council-cybersec-2025',
     title: 'British Council GREAT Scholarships - Cybersecurity',
     institution: 'British Council',
     type: 'scholarship',
     field: 'Cybersecurity',
     level: 'graduate',
     country: 'United Kingdom',
-    deadline: '2024-11-15',
+    deadline: '2025-01-31',
     funding_amount: 25000,
     requirements: 'Nigerian citizenship, excellent academic record, leadership potential, commitment to return to Nigeria',
     eligibility_criteria: {
@@ -201,6 +175,31 @@ export const cybersecurityOpportunities: Opportunity[] = [
       english: 'IELTS 6.5 or equivalent'
     },
     application_url: 'https://study-uk.britishcouncil.org/scholarships-funding/great-scholarships',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  },
+  {
+    id: 'edinburgh-cybersec-2025',
+    title: 'University of Edinburgh Cybersecurity Masters Scholarship',
+    institution: 'University of Edinburgh',
+    type: 'scholarship',
+    field: 'Cybersecurity',
+    level: 'graduate',
+    country: 'United Kingdom',
+    deadline: '2025-03-15',
+    funding_amount: 38000,
+    requirements: 'Strong academic background, interest in cybersecurity research, leadership potential',
+    eligibility_criteria: {
+      gpa_minimum: 3.3,
+      research_interest: true,
+      leadership_potential: true
+    },
+    gpa_requirement: 3.3,
+    citizenship_requirements: ['Any'],
+    language_requirements: {
+      english: 'IELTS 7.0 or TOEFL 100'
+    },
+    application_url: 'https://www.ed.ac.uk/student-funding/postgraduate',
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   }
