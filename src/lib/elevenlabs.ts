@@ -9,7 +9,7 @@ export class ElevenLabsService {
 
   constructor() {
     if (!ELEVENLABS_API_KEY) {
-      throw new Error('Missing ElevenLabs API key');
+      console.warn('ElevenLabs API key not found. Text-to-speech will be disabled.');
     }
     this.apiKey = ELEVENLABS_API_KEY;
     this.voiceId = ELEVENLABS_VOICE_ID;
@@ -24,6 +24,10 @@ export class ElevenLabsService {
   }
 
   async textToSpeech(text: string): Promise<ArrayBuffer> {
+    if (!this.apiKey) {
+      throw new Error('ElevenLabs API key is not configured. Please check your environment variables.');
+    }
+
     try {
       // Stop any currently playing ElevenLabs audio
       ElevenLabsService.stopAllAudio();
@@ -46,7 +50,27 @@ export class ElevenLabsService {
       });
 
       if (!response.ok) {
-        throw new Error(`ElevenLabs API error: ${response.statusText}`);
+        const errorText = await response.text();
+        let errorMessage = `ElevenLabs API error: ${response.status} ${response.statusText}`;
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          if (errorData.detail && errorData.detail.message) {
+            errorMessage = errorData.detail.message;
+          }
+        } catch {
+          // If we can't parse the error, use the status text
+        }
+
+        if (response.status === 401) {
+          errorMessage = 'Invalid ElevenLabs API key. Please check your credentials.';
+        } else if (response.status === 429) {
+          errorMessage = 'ElevenLabs API rate limit exceeded. Please try again later.';
+        } else if (response.status === 422) {
+          errorMessage = 'Invalid voice ID or request parameters for ElevenLabs API.';
+        }
+
+        throw new Error(errorMessage);
       }
 
       return await response.arrayBuffer();
@@ -60,7 +84,7 @@ export class ElevenLabsService {
     // Note: ElevenLabs doesn't provide STT, so we'll use Web Speech API
     return new Promise((resolve, reject) => {
       if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-        reject(new Error('Speech recognition not supported'));
+        reject(new Error('Speech recognition not supported in this browser'));
         return;
       }
 
