@@ -39,6 +39,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         speechSynthesis.cancel();
       }
       
+      // Stop any existing ElevenLabs audio
+      ElevenLabsService.stopAllAudio();
+      
       // Check if ElevenLabs is configured
       const apiKey = import.meta.env.VITE_ELEVENLABS_API_KEY;
       
@@ -50,6 +53,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           const audioBlob = new Blob([audioBuffer], { type: 'audio/mpeg' });
           const audioUrl = URL.createObjectURL(audioBlob);
           const audio = new Audio(audioUrl);
+          
+          // Set this as the current audio in ElevenLabsService
+          ElevenLabsService.setCurrentAudio(audio);
           
           audio.onended = () => {
             setIsPlaying(false);
@@ -125,6 +131,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     if ('speechSynthesis' in window) {
       speechSynthesis.cancel();
     }
+    ElevenLabsService.stopAllAudio();
     setIsPlaying(false);
   };
 
