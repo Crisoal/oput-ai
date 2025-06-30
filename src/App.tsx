@@ -24,6 +24,42 @@ function App() {
   
   const supabaseService = new SupabaseService();
 
+  // Load opportunities from localStorage on component mount
+  useEffect(() => {
+    const storedOpportunities = localStorage.getItem('oput_opportunities');
+    if (storedOpportunities) {
+      try {
+        const parsedOpportunities = JSON.parse(storedOpportunities);
+        setOpportunities(parsedOpportunities);
+        
+        // Create tracked opportunities from stored data
+        const trackedOps = parsedOpportunities.map((opp: any, index: number) => ({
+          id: `match_${Date.now()}_${index}`,
+          user_id: 'demo_user',
+          opportunity_id: opp.id,
+          match_score: opp.matchScore || Math.floor(Math.random() * 30) + 70,
+          success_probability: Math.floor(Math.random() * 40) + 60,
+          eligibility_status: 'eligible' as const,
+          action_items: opp.action_items || [
+            'Review eligibility requirements',
+            'Prepare academic transcripts',
+            'Write personal statement',
+            'Submit application before deadline'
+          ],
+          is_bookmarked: false,
+          application_status: 'not_started' as const,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          opportunity: opp
+        }));
+        
+        setTrackedOpportunities(trackedOps);
+      } catch (error) {
+        console.error('Error loading stored opportunities:', error);
+      }
+    }
+  }, []);
+
   const handleOpportunitiesFound = (newOpportunities: Opportunity[]) => {
     setOpportunities(newOpportunities);
     
@@ -48,13 +84,7 @@ function App() {
       opportunity: opp
     }));
     
-    setTrackedOpportunities(prev => {
-      // Merge with existing, avoiding duplicates
-      const existing = prev.filter(tracked => 
-        !trackedOps.some(newOp => newOp.opportunity.id === tracked.opportunity.id)
-      );
-      return [...existing, ...trackedOps];
-    });
+    setTrackedOpportunities(trackedOps);
     
     if (newOpportunities.length > 0) {
       setActiveTab('results');

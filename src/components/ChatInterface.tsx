@@ -178,8 +178,19 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         opportunities = await searchOpportunities(userInfo);
         
         if (opportunities.length > 0) {
+          // Store opportunities in localStorage for persistence across tabs
+          const storedOpportunities = JSON.parse(localStorage.getItem('oput_opportunities') || '[]');
+          
+          // Merge new opportunities with existing ones, avoiding duplicates
+          const existingIds = new Set(storedOpportunities.map((opp: any) => opp.id));
+          const newOpportunities = opportunities.filter(opp => !existingIds.has(opp.id));
+          const allOpportunities = [...storedOpportunities, ...newOpportunities];
+          
+          // Store updated opportunities
+          localStorage.setItem('oput_opportunities', JSON.stringify(allOpportunities));
+          
           // Add opportunities to results immediately
-          onOpportunitiesFound(opportunities);
+          onOpportunitiesFound(allOpportunities);
           
           // Update context to include found opportunities
           updatedContext.opportunities_shown = opportunities.map(opp => opp.id);
