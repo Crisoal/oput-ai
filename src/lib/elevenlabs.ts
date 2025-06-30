@@ -5,6 +5,7 @@ const ELEVENLABS_API_URL = 'https://api.elevenlabs.io/v1';
 export class ElevenLabsService {
   private apiKey: string;
   private voiceId: string;
+  private static currentAudio: HTMLAudioElement | null = null;
 
   constructor() {
     if (!ELEVENLABS_API_KEY) {
@@ -14,8 +15,19 @@ export class ElevenLabsService {
     this.voiceId = ELEVENLABS_VOICE_ID;
   }
 
+  static stopAllAudio() {
+    if (ElevenLabsService.currentAudio) {
+      ElevenLabsService.currentAudio.pause();
+      ElevenLabsService.currentAudio.currentTime = 0;
+      ElevenLabsService.currentAudio = null;
+    }
+  }
+
   async textToSpeech(text: string): Promise<ArrayBuffer> {
     try {
+      // Stop any currently playing ElevenLabs audio
+      ElevenLabsService.stopAllAudio();
+
       const response = await fetch(`${ELEVENLABS_API_URL}/text-to-speech/${this.voiceId}`, {
         method: 'POST',
         headers: {
@@ -70,6 +82,10 @@ export class ElevenLabsService {
 
       recognition.start();
     });
+  }
+
+  static setCurrentAudio(audio: HTMLAudioElement) {
+    ElevenLabsService.currentAudio = audio;
   }
 }
 

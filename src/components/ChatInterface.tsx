@@ -7,6 +7,7 @@ import { VoiceSettings } from './VoiceSettings';
 import { Message, ConversationContext, UserProfile } from '../types';
 import { GeminiService } from '../lib/gemini';
 import { SupabaseService } from '../lib/supabaseService';
+import { ElevenLabsService } from '../lib/elevenlabs';
 
 interface ChatInterfaceProps {
   onOpportunitiesFound: (opportunities: any[]) => void;
@@ -148,6 +149,12 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onOpportunitiesFou
 
   const handleSendMessage = async (content: string) => {
     if (!content.trim() || isLoading) return;
+
+    // Stop all ongoing audio immediately when user sends a new message
+    if ('speechSynthesis' in window) {
+      speechSynthesis.cancel();
+    }
+    ElevenLabsService.stopAllAudio();
 
     const userMessage: Message = {
       id: Date.now().toString(),
