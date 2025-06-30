@@ -35,7 +35,7 @@ export const BoltBadge: React.FC<BoltBadgeProps> = ({
         <img
           src="/white_circle_360x360.png"
           alt="Built with Bolt.new"
-          className="w-12 h-12 rounded-full"
+          className="w-16 h-16 rounded-full"
         />
       </button>
     );
@@ -45,12 +45,12 @@ export const BoltBadge: React.FC<BoltBadgeProps> = ({
   return (
     <button
       onClick={handleClick}
-      className={`flex items-center justify-center w-12 h-12 rounded-full transition-all duration-200 hover:scale-105 bg-black text-white hover:bg-gray-900 ${className}`}
+      className={`flex items-center justify-center w-16 h-16 rounded-full transition-all duration-200 hover:scale-105 bg-black text-white hover:bg-gray-900 ${className}`}
       title="Built with Bolt.new"
     >
       <svg
-        width="20"
-        height="20"
+        width="28"
+        height="28"
         viewBox="0 0 24 24"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
