@@ -112,7 +112,13 @@ export const OpportunityResults: React.FC<OpportunityResultsProps> = ({
   // Add mock match scores if they don't exist
   const opportunitiesWithScores = filteredOpportunities.map((opp, index) => ({
     ...opp,
-    matchScore: (opp as any).matchScore || Math.floor(Math.random() * 30) + 70 // 70-100% range
+    matchScore: (opp as any).matchScore || Math.floor(Math.random() * 30) + 70, // 70-100% range
+    action_items: (opp as any).action_items || [
+      'Review eligibility requirements',
+      'Prepare academic transcripts',
+      'Write personal statement',
+      'Submit application before deadline'
+    ]
   }));
 
   // Sort by match score
@@ -151,6 +157,7 @@ export const OpportunityResults: React.FC<OpportunityResultsProps> = ({
               key={opportunity.id}
               opportunity={opportunity}
               matchScore={opportunity.matchScore}
+              actionItems={opportunity.action_items}
               index={index}
             />
           ))}

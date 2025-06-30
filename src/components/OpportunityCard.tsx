@@ -1,19 +1,23 @@
-import React from 'react';
-import { Calendar, MapPin, DollarSign, GraduationCap, ExternalLink } from 'lucide-react';
-import { motion } from 'framer-motion';
+import React, { useState } from 'react';
+import { Calendar, MapPin, DollarSign, GraduationCap, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Opportunity } from '../types';
 
 interface OpportunityCardProps {
   opportunity: Opportunity;
   matchScore?: number;
   index: number;
+  actionItems?: string[];
 }
 
 export const OpportunityCard: React.FC<OpportunityCardProps> = ({ 
   opportunity, 
   matchScore,
-  index 
+  index,
+  actionItems = []
 }) => {
+  const [showDetails, setShowDetails] = useState(false);
+
   const formatAmount = (amount: number) => {
     if (amount >= 1000000) {
       return `$${(amount / 1000000).toFixed(1)}M`;
@@ -40,6 +44,14 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
       research: 'bg-pink-500/20 text-pink-300',
     };
     return colors[type as keyof typeof colors] || 'bg-gray-500/20 text-gray-300';
+  };
+
+  const formatDeadline = (deadline: string) => {
+    try {
+      return new Date(deadline).toLocaleDateString();
+    } catch {
+      return deadline;
+    }
   };
 
   return (
@@ -74,8 +86,6 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
         )}
       </div>
 
-      <p className="text-white/80 text-sm mb-4 line-clamp-3">{opportunity.description}</p>
-
       <div className="grid grid-cols-2 gap-4 mb-4">
         <div className="flex items-center gap-2 text-white/70 text-sm">
           <DollarSign className="w-4 h-4" />
@@ -87,7 +97,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
         </div>
         <div className="flex items-center gap-2 text-white/70 text-sm">
           <Calendar className="w-4 h-4" />
-          <span>{new Date(opportunity.deadline).toLocaleDateString()}</span>
+          <span>{formatDeadline(opportunity.deadline)}</span>
         </div>
         <div className="flex items-center gap-2 text-white/70 text-sm">
           <GraduationCap className="w-4 h-4" />
@@ -95,9 +105,41 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
         </div>
       </div>
 
+      {/* Action Items and Details Toggle */}
+      {actionItems.length > 0 && (
+        <div className="mb-4">
+          <button
+            onClick={() => setShowDetails(!showDetails)}
+            className="flex items-center gap-2 text-white/80 hover:text-white text-sm font-medium transition-colors"
+          >
+            <span>Action Steps</span>
+            {showDetails ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+          
+          <AnimatePresence>
+            {showDetails && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="mt-2 space-y-1"
+              >
+                {actionItems.map((item, idx) => (
+                  <div key={idx} className="text-sm text-white/70 flex items-start gap-2">
+                    <span className="text-blue-400 mt-1">•</span>
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
+
       <div className="flex justify-between items-center">
         <div className="text-xs text-white/60">
-          {opportunity.requirements.length} requirements
+          {opportunity.requirements ? opportunity.requirements.split(',').length : 0} requirements
         </div>
         <button
           onClick={() => window.open(opportunity.application_url, '_blank')}
