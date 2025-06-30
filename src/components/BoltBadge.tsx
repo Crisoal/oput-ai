@@ -5,18 +5,12 @@ interface BoltBadgeProps {
   className?: string;
 }
 
-export const BoltBadge: React.FC<BoltBadgeProps> = ({
-  variant = 'white',
-  className = ''
+export const BoltBadge: React.FC<BoltBadgeProps> = ({ 
+  variant = 'white', 
+  className = '' 
 }) => {
   const handleClick = () => {
     window.open('https://bolt.new/', '_blank');
-  };
-
-  const imageSrcs = {
-    white: 'https://drive.google.com/uc?export=view&id=1jhrXZgOTIVq9g1xNTibuQmJwe5QTqmqO',
-    black: 'https://github.com/kickiniteasy/bolt-hackathon-badge/raw/main/bolt-black-circle.png',
-    text: '' // will not use image for text variant
   };
 
   if (variant === 'text') {
@@ -33,13 +27,23 @@ export const BoltBadge: React.FC<BoltBadgeProps> = ({
   return (
     <button
       onClick={handleClick}
-      className={`w-12 h-12 p-1 rounded-full transition-transform duration-200 hover:scale-105 ${className}`}
+      className={`flex items-center justify-center w-10 h-10 rounded-full transition-all duration-200 hover:scale-105 overflow-hidden ${className}`}
       title="Built with Bolt.new"
     >
       <img
-        src={imageSrcs[variant]}
-        alt="Bolt.new Badge"
+        src="https://drive.google.com/uc?export=view&id=1NSb2PlpCwxZCwewmSqpIvmAiu4ZAHB55"
+        alt="Bolt.new"
         className="w-full h-full object-contain"
+        onError={(e) => {
+          // Fallback to SVG if image fails to load
+          const target = e.target as HTMLImageElement;
+          target.style.display = 'none';
+          target.parentElement!.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="${variant === 'white' ? '#000' : '#fff'}" />
+            </svg>
+          `;
+        }}
       />
     </button>
   );
