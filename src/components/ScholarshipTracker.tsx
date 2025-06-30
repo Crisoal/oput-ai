@@ -19,13 +19,6 @@ export const ScholarshipTracker: React.FC<ScholarshipTrackerProps> = ({
   const [sortBy, setSortBy] = useState<'deadline' | 'match_score' | 'status'>('deadline');
   const [filterStatus, setFilterStatus] = useState<string>('all');
 
-  // Auto-download CSV when component mounts and opportunities exist
-  useEffect(() => {
-    if (opportunities.length > 0) {
-      downloadCSV();
-    }
-  }, []);
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'not_started': return 'text-gray-400 bg-gray-400/20';
@@ -101,6 +94,8 @@ export const ScholarshipTracker: React.FC<ScholarshipTrackerProps> = ({
       'Days Until Deadline',
       'Action Items',
       'Requirements',
+      'GPA Requirement',
+      'Citizenship Requirements',
       'Application URL',
       'Created Date'
     ];
@@ -120,6 +115,8 @@ export const ScholarshipTracker: React.FC<ScholarshipTrackerProps> = ({
       getDaysUntilDeadline(opp.opportunity.deadline),
       opp.action_items.join('; '),
       opp.opportunity.requirements || 'N/A',
+      opp.opportunity.gpa_requirement || 'N/A',
+      opp.opportunity.citizenship_requirements?.join(', ') || 'N/A',
       opp.opportunity.application_url || 'N/A',
       new Date(opp.created_at).toLocaleDateString()
     ]);
@@ -132,7 +129,7 @@ export const ScholarshipTracker: React.FC<ScholarshipTrackerProps> = ({
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `oput_opportunities_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `oput_tracker_${new Date().toISOString().split('T')[0]}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();

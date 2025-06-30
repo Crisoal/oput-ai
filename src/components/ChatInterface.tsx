@@ -42,6 +42,23 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     scrollToBottom();
   }, [messages]);
 
+  // Load all opportunities from database on component mount
+  useEffect(() => {
+    const loadDatabaseOpportunities = async () => {
+      try {
+        const allOpportunities = await supabaseService.getAllOpportunities();
+        if (allOpportunities.length > 0) {
+          // Store in localStorage for persistence
+          localStorage.setItem('oput_all_opportunities', JSON.stringify(allOpportunities));
+        }
+      } catch (error) {
+        console.error('Error loading database opportunities:', error);
+      }
+    };
+
+    loadDatabaseOpportunities();
+  }, []);
+
   const extractUserInfo = (conversation: Message[]): Partial<UserProfile> => {
     const info: Partial<UserProfile> = {};
     const conversationText = conversation.map(m => m.content).join(' ').toLowerCase();

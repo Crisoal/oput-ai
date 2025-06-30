@@ -2,6 +2,32 @@ import { supabase } from './supabase';
 import { Opportunity, UserProfile, OpportunityMatch } from '../types';
 
 export class SupabaseService {
+  // Get all opportunities from database
+  async getAllOpportunities(): Promise<Opportunity[]> {
+    try {
+      const { data, error } = await supabase
+        .from('opportunities')
+        .select('*')
+        .order('deadline', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching all opportunities:', error);
+        return [];
+      }
+
+      // Transform the data to match our interface
+      return (data || []).map(opp => ({
+        ...opp,
+        funding_amount: typeof opp.funding_amount === 'string' ? parseInt(opp.funding_amount) : opp.funding_amount,
+        application_url: opp.application_url || `https://example.com/apply/${opp.id}`,
+        requirements: typeof opp.requirements === 'string' ? opp.requirements : opp.requirements?.join(', ') || '',
+      }));
+    } catch (error) {
+      console.error('Error in getAllOpportunities:', error);
+      return [];
+    }
+  }
+
   // Opportunity queries
   async searchOpportunities(filters: {
     level?: string;

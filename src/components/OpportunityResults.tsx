@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Filter } from 'lucide-react';
+import { Search, Filter, Download } from 'lucide-react';
 import { OpportunityCard } from './OpportunityCard';
 import { FilterPanel } from './FilterPanel';
 import { Opportunity, FilterOptions } from '../types';
@@ -88,6 +88,62 @@ export const OpportunityResults: React.FC<OpportunityResultsProps> = ({
     setFilteredOpportunities(filtered);
   };
 
+  const downloadCSV = () => {
+    if (filteredOpportunities.length === 0) {
+      alert('No opportunities to download. Please find some opportunities first.');
+      return;
+    }
+
+    const headers = [
+      'Title',
+      'Institution',
+      'Type',
+      'Level',
+      'Field',
+      'Country',
+      'Deadline',
+      'Funding Amount',
+      'Match Score (%)',
+      'Requirements',
+      'GPA Requirement',
+      'Citizenship Requirements',
+      'Application URL',
+      'Created Date'
+    ];
+
+    const csvData = filteredOpportunities.map(opp => [
+      opp.title,
+      opp.institution,
+      opp.type,
+      opp.level,
+      opp.field || 'N/A',
+      opp.country,
+      opp.deadline,
+      `$${opp.funding_amount.toLocaleString()}`,
+      (opp as any).matchScore || 'N/A',
+      opp.requirements || 'N/A',
+      opp.gpa_requirement || 'N/A',
+      opp.citizenship_requirements?.join(', ') || 'N/A',
+      opp.application_url || 'N/A',
+      new Date(opp.created_at).toLocaleDateString()
+    ]);
+
+    const csvContent = [headers, ...csvData]
+      .map(row => row.map(cell => `"${cell}"`).join(','))
+      .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `oput_opportunities_results_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-white/60">
@@ -137,18 +193,28 @@ export const OpportunityResults: React.FC<OpportunityResultsProps> = ({
             </p>
           </div>
           
-          <button 
-            onClick={() => setIsFilterOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-lg transition-colors duration-200"
-          >
-            <Filter className="w-4 h-4" />
-            <span className="text-sm">Filter</span>
-            {(filters.type.length > 0 || filters.level.length > 0 || filters.country.length > 0 || filters.field.length > 0) && (
-              <span className="bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full">
-                {filters.type.length + filters.level.length + filters.country.length + filters.field.length}
-              </span>
-            )}
-          </button>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={downloadCSV}
+              className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors duration-200"
+            >
+              <Download className="w-4 h-4" />
+              <span className="text-sm">Export CSV</span>
+            </button>
+            
+            <button 
+              onClick={() => setIsFilterOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-lg transition-colors duration-200"
+            >
+              <Filter className="w-4 h-4" />
+              <span className="text-sm">Filter</span>
+              {(filters.type.length > 0 || filters.level.length > 0 || filters.country.length > 0 || filters.field.length > 0) && (
+                <span className="bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full">
+                  {filters.type.length + filters.level.length + filters.country.length + filters.field.length}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
 
         <div className="space-y-4">
