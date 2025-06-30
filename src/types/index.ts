@@ -8,27 +8,42 @@ export interface Opportunity {
   country: string;
   deadline: string;
   funding_amount: number;
-  requirements: string[];
-  eligibility_criteria: string[];
+  requirements: string;
+  eligibility_criteria: any;
   gpa_requirement?: number;
   citizenship_requirements?: string[];
-  language_requirements?: string[];
-  description: string;
-  application_url: string;
+  language_requirements?: any;
+  application_url?: string;
   created_at: string;
+  updated_at?: string;
+}
+
+export interface OpportunityMatch {
+  id: string;
+  user_id: string;
+  opportunity_id: string;
+  match_score: number;
+  success_probability: number;
+  eligibility_status: 'eligible' | 'partially_eligible' | 'not_eligible' | 'pending';
+  action_items: string[];
+  is_bookmarked: boolean;
+  application_status: 'not_started' | 'in_progress' | 'submitted' | 'completed';
+  created_at: string;
+  updated_at: string;
 }
 
 export interface UserProfile {
   id: string;
+  user_id?: string;
   academic_level: string;
   field_of_study: string;
   current_gpa?: number;
   country: string;
   citizenship: string;
   language_proficiency: string[];
-  work_experience: number;
-  research_experience: boolean;
-  financial_need: 'low' | 'medium' | 'high';
+  work_experience?: string;
+  research_experience?: string;
+  financial_need?: 'low' | 'medium' | 'high';
   special_status?: string[];
   created_at: string;
   updated_at: string;
@@ -40,6 +55,7 @@ export interface Message {
   content: string;
   timestamp: Date;
   type?: 'text' | 'voice';
+  canPlayAudio?: boolean;
 }
 
 export interface ConversationContext {
@@ -48,4 +64,15 @@ export interface ConversationContext {
   collected_info: Partial<UserProfile>;
   last_query: string;
   opportunities_shown: string[];
+}
+
+export interface FilterOptions {
+  type: string[];
+  level: string[];
+  country: string[];
+  field: string[];
+  minFunding: number;
+  maxFunding: number;
+  deadlineRange: string;
+  minMatchScore: number;
 }

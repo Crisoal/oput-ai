@@ -4,24 +4,22 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MessageBubble } from './MessageBubble';
 import { VoiceRecorder } from './VoiceRecorder';
 import { VoiceSettings } from './VoiceSettings';
-import { Message, ConversationContext, UserProfile } from '../types';
+import { Message, ConversationContext, UserProfile, Opportunity } from '../types';
 import { GeminiService } from '../lib/gemini';
 import { SupabaseService } from '../lib/supabaseService';
 import { ElevenLabsService } from '../lib/elevenlabs';
 
 interface ChatInterfaceProps {
-  onOpportunitiesFound: (opportunities: any[]) => void;
+  onOpportunitiesFound: (opportunities: Opportunity[]) => void;
+  messages: Message[];
+  setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
 }
 
-export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onOpportunitiesFound }) => {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content: "Hello! I'm Oput, your AI assistant for discovering educational opportunities. I'll help you find scholarships, grants, and fellowships that match your profile perfectly.\n\nTo get started, could you tell me about your current academic level and field of study?",
-      timestamp: new Date(),
-    }
-  ]);
+export const ChatInterface: React.FC<ChatInterfaceProps> = ({ 
+  onOpportunitiesFound,
+  messages,
+  setMessages
+}) => {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [autoPlayVoice, setAutoPlayVoice] = useState(true);
@@ -109,14 +107,14 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onOpportunitiesFou
         return {
           ...opp,
           matchScore,
-          action_items: generateActionItems(opp, userInfo),
+          action_items: supabaseService.generateActionItems(opp, userInfo),
         };
       });
 
       // Sort by match score and take top results
       const topOpportunities = opportunitiesWithScores
         .sort((a, b) => b.matchScore - a.matchScore)
-        .slice(0, 5);
+        .slice(0, 8);
 
       return topOpportunities;
     } catch (error) {
@@ -125,26 +123,19 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onOpportunitiesFou
     }
   };
 
-  const generateActionItems = (opportunity: any, userInfo: Partial<UserProfile>): string[] => {
-    const items = [];
+  const shouldSearchForOpportunities = (content: string, userInfo: Partial<UserProfile>) => {
+    const searchTriggers = [
+      'find', 'search', 'show', 'recommend', 'suggest', 'look for',
+      'scholarship', 'fellowship', 'grant', 'opportunity', 'funding'
+    ];
     
-    items.push('Review eligibility requirements carefully');
-    items.push('Prepare academic transcripts');
+    const hasSearchTrigger = searchTriggers.some(trigger => 
+      content.toLowerCase().includes(trigger)
+    );
     
-    if (opportunity.type === 'research' || opportunity.level === 'phd') {
-      items.push('Draft research proposal');
-      items.push('Contact potential supervisors');
-    }
+    const hasMinimumInfo = userInfo.academic_level && userInfo.field_of_study;
     
-    if (opportunity.gpa_requirement && userInfo.current_gpa && userInfo.current_gpa < opportunity.gpa_requirement) {
-      items.push('Consider improving GPA before applying');
-    }
-    
-    items.push('Gather letters of recommendation');
-    items.push('Write personal statement');
-    items.push('Submit application before deadline');
-    
-    return items;
+    return hasSearchTrigger && hasMinimumInfo;
   };
 
   const handleSendMessage = async (content: string) => {
@@ -179,10 +170,40 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onOpportunitiesFou
         collected_info: { ...context.collected_info, ...userInfo }
       };
       
-      // Generate AI response
+      // Check if we should search for opportunities
+      const shouldSearch = shouldSearchForOpportunities(content, userInfo);
+      let opportunities: any[] = [];
+      
+      if (shouldSearch) {
+        opportunities = await searchOpportunities(userInfo);
+        
+        if (opportunities.length > 0) {
+          // Add opportunities to results immediately
+          onOpportunitiesFound(opportunities);
+          
+          // Update context to include found opportunities
+          updatedContext.opportunities_shown = opportunities.map(opp => opp.id);
+          updatedContext.current_stage = 'results';
+        }
+      }
+      
+      // Generate AI response with context about found opportunities
+      const contextForAI = {
+        ...updatedContext,
+        found_opportunities: opportunities.length > 0 ? {
+          count: opportunities.length,
+          top_matches: opportunities.slice(0, 3).map(opp => ({
+            title: opp.title,
+            institution: opp.institution,
+            match_score: opp.matchScore,
+            country: opp.country
+          }))
+        } : null
+      };
+      
       const response = await geminiService.generateResponse(
         updatedMessages.map(m => ({ role: m.role, content: m.content })),
-        updatedContext
+        contextForAI
       );
 
       const assistantMessage: Message = {
@@ -190,36 +211,11 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onOpportunitiesFou
         role: 'assistant',
         content: response,
         timestamp: new Date(),
+        canPlayAudio: true,
       };
 
       setMessages(prev => [...prev, assistantMessage]);
       setContext(updatedContext);
-
-      // Check if we have enough info to search for opportunities
-      if (userInfo.academic_level && userInfo.field_of_study && 
-          (content.toLowerCase().includes('find') || 
-           content.toLowerCase().includes('search') || 
-           content.toLowerCase().includes('show') ||
-           content.toLowerCase().includes('recommend'))) {
-        
-        // Search for opportunities
-        const opportunities = await searchOpportunities(userInfo);
-        
-        if (opportunities.length > 0) {
-          onOpportunitiesFound(opportunities);
-          
-          // Add a follow-up message about found opportunities
-          setTimeout(() => {
-            const followUpMessage: Message = {
-              id: (Date.now() + 2).toString(),
-              role: 'assistant',
-              content: `Great! I found ${opportunities.length} opportunities that match your profile. You can view them in the Results tab. The top match is "${opportunities[0].title}" with a ${opportunities[0].matchScore}% compatibility score. Would you like me to explain why this opportunity is a good fit for you?`,
-              timestamp: new Date(),
-            };
-            setMessages(prev => [...prev, followUpMessage]);
-          }, 1000);
-        }
-      }
 
     } catch (error) {
       console.error('Error generating response:', error);
@@ -228,6 +224,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onOpportunitiesFou
         role: 'assistant',
         content: 'I apologize, but I encountered an error. Please try again or check your API configuration.',
         timestamp: new Date(),
+        canPlayAudio: true,
       };
       setMessages(prev => [...prev, errorMessage]);
     } finally {

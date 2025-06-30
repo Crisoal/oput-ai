@@ -5,13 +5,23 @@ import { ChatInterface } from './components/ChatInterface';
 import { OpportunityResults } from './components/OpportunityResults';
 import { ScholarshipTracker } from './components/ScholarshipTracker';
 import { BoltBadge } from './components/BoltBadge';
-import { Opportunity, OpportunityMatch } from './types';
+import { Opportunity, OpportunityMatch, Message } from './types';
 import { SupabaseService } from './lib/supabaseService';
 
 function App() {
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [trackedOpportunities, setTrackedOpportunities] = useState<(OpportunityMatch & { opportunity: Opportunity })[]>([]);
   const [activeTab, setActiveTab] = useState<'chat' | 'results' | 'tracker'>('chat');
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: '1',
+      role: 'assistant',
+      content: "Hello! I'm Oput, your AI assistant for discovering educational opportunities. I'll help you find scholarships, grants, and fellowships that match your profile perfectly.\n\nTo get started, could you tell me about your current academic level and field of study?",
+      timestamp: new Date(),
+      canPlayAudio: true,
+    }
+  ]);
+  
   const supabaseService = new SupabaseService();
 
   const handleOpportunitiesFound = (newOpportunities: Opportunity[]) => {
@@ -145,7 +155,11 @@ function App() {
             className="h-full"
           >
             {activeTab === 'chat' && (
-              <ChatInterface onOpportunitiesFound={handleOpportunitiesFound} />
+              <ChatInterface 
+                onOpportunitiesFound={handleOpportunitiesFound}
+                messages={messages}
+                setMessages={setMessages}
+              />
             )}
             {activeTab === 'results' && (
               <OpportunityResults opportunities={opportunities} />

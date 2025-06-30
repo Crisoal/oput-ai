@@ -29,10 +29,10 @@ export class SupabaseService {
         query = query.eq('type', filters.type);
       }
       if (filters.gpa_requirement) {
-        query = query.lte('gpa_requirement', filters.gpa_requirement);
+        query = query.or(`gpa_requirement.is.null,gpa_requirement.lte.${filters.gpa_requirement}`);
       }
       if (filters.citizenship) {
-        query = query.contains('citizenship_requirements', [filters.citizenship]);
+        query = query.or(`citizenship_requirements.cs.{${filters.citizenship}},citizenship_requirements.cs.{Any}`);
       }
 
       const { data, error } = await query.order('deadline', { ascending: true });
@@ -42,7 +42,13 @@ export class SupabaseService {
         return [];
       }
 
-      return data || [];
+      // Transform the data to match our interface
+      return (data || []).map(opp => ({
+        ...opp,
+        funding_amount: typeof opp.funding_amount === 'string' ? parseInt(opp.funding_amount) : opp.funding_amount,
+        application_url: opp.application_url || `https://example.com/apply/${opp.id}`,
+        requirements: typeof opp.requirements === 'string' ? opp.requirements : opp.requirements?.join(', ') || '',
+      }));
     } catch (error) {
       console.error('Error in searchOpportunities:', error);
       return [];
@@ -62,7 +68,12 @@ export class SupabaseService {
         return null;
       }
 
-      return data;
+      return {
+        ...data,
+        funding_amount: typeof data.funding_amount === 'string' ? parseInt(data.funding_amount) : data.funding_amount,
+        application_url: data.application_url || `https://example.com/apply/${data.id}`,
+        requirements: typeof data.requirements === 'string' ? data.requirements : data.requirements?.join(', ') || '',
+      };
     } catch (error) {
       console.error('Error in getOpportunityById:', error);
       return null;
@@ -274,5 +285,28 @@ export class SupabaseService {
     }
 
     return false;
+  }
+
+  // Generate action items for an opportunity
+  generateActionItems(opportunity: Opportunity, userProfile: Partial<UserProfile>): string[] {
+    const items = [];
+    
+    items.push('Review eligibility requirements carefully');
+    items.push('Prepare academic transcripts');
+    
+    if (opportunity.type === 'research' || opportunity.level === 'phd') {
+      items.push('Draft research proposal');
+      items.push('Contact potential supervisors');
+    }
+    
+    if (opportunity.gpa_requirement && userProfile.current_gpa && userProfile.current_gpa < opportunity.gpa_requirement) {
+      items.push('Consider improving GPA before applying');
+    }
+    
+    items.push('Gather letters of recommendation');
+    items.push('Write personal statement');
+    items.push('Submit application before deadline');
+    
+    return items;
   }
 }

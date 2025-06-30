@@ -20,16 +20,17 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const [audioError, setAudioError] = useState(false);
   const [hasAutoPlayed, setHasAutoPlayed] = useState(false);
   const isUser = message.role === 'user';
+  const canPlayAudio = message.canPlayAudio !== false; // Default to true unless explicitly false
 
   useEffect(() => {
-    if (autoPlay && !isUser && isLatest && !hasAutoPlayed && !audioError) {
+    if (autoPlay && !isUser && isLatest && !hasAutoPlayed && !audioError && canPlayAudio) {
       setHasAutoPlayed(true);
       playAudio();
     }
-  }, [autoPlay, isUser, isLatest, hasAutoPlayed, audioError]);
+  }, [autoPlay, isUser, isLatest, hasAutoPlayed, audioError, canPlayAudio]);
 
   const playAudio = async () => {
-    if (isUser || audioError) return;
+    if (isUser || audioError || !canPlayAudio) return;
 
     try {
       setIsPlaying(true);
@@ -171,7 +172,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             )}
           </div>
           
-          {!isUser && !audioError && (
+          {!isUser && !audioError && canPlayAudio && (
             <button
               onClick={isPlaying ? stopAudio : playAudio}
               disabled={isPlaying}
