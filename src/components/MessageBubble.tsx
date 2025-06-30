@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Volume2, VolumeX } from 'lucide-react';
 import { motion } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
@@ -8,39 +8,78 @@ import { ElevenLabsService } from '../lib/elevenlabs';
 interface MessageBubbleProps {
   message: Message;
   isLatest?: boolean;
+  autoPlay?: boolean;
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({ 
   message, 
-  isLatest = false 
+  isLatest = false,
+  autoPlay = false
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioError, setAudioError] = useState(false);
+  const [hasAutoPlayed, setHasAutoPlayed] = useState(false);
   const isUser = message.role === 'user';
+
+  useEffect(() => {
+    if (autoPlay && !isUser && isLatest && !hasAutoPlayed && !audioError) {
+      setHasAutoPlayed(true);
+      playAudio();
+    }
+  }, [autoPlay, isUser, isLatest, hasAutoPlayed, audioError]);
 
   const playAudio = async () => {
     if (isUser || audioError) return;
 
     try {
       setIsPlaying(true);
-      const elevenlabs = new ElevenLabsService();
-      const audioBuffer = await elevenlabs.textToSpeech(message.content);
       
-      const audioBlob = new Blob([audioBuffer], { type: 'audio/mpeg' });
-      const audioUrl = URL.createObjectURL(audioBlob);
-      const audio = new Audio(audioUrl);
+      // Check if ElevenLabs is configured
+      const apiKey = import.meta.env.VITE_ELEVENLABS_API_KEY;
       
-      audio.onended = () => {
-        setIsPlaying(false);
-        URL.revokeObjectURL(audioUrl);
-      };
-      
-      await audio.play();
+      if (apiKey) {
+        const elevenlabs = new ElevenLabsService();
+        const audioBuffer = await elevenlabs.textToSpeech(message.content);
+        
+        const audioBlob = new Blob([audioBuffer], { type: 'audio/mpeg' });
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const audio = new Audio(audioUrl);
+        
+        audio.onended = () => {
+          setIsPlaying(false);
+          URL.revokeObjectURL(audioUrl);
+        };
+        
+        await audio.play();
+      } else {
+        // Fallback to Web Speech API
+        if ('speechSynthesis' in window) {
+          const utterance = new SpeechSynthesisUtterance(message.content);
+          utterance.rate = 0.9;
+          utterance.pitch = 1;
+          utterance.volume = 0.8;
+          
+          utterance.onend = () => {
+            setIsPlaying(false);
+          };
+          
+          speechSynthesis.speak(utterance);
+        } else {
+          throw new Error('Speech synthesis not supported');
+        }
+      }
     } catch (error) {
       console.error('Audio playback error:', error);
       setAudioError(true);
       setIsPlaying(false);
     }
+  };
+
+  const stopAudio = () => {
+    if ('speechSynthesis' in window) {
+      speechSynthesis.cancel();
+    }
+    setIsPlaying(false);
   };
 
   return (
@@ -81,10 +120,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           
           {!isUser && !audioError && (
             <button
-              onClick={playAudio}
+              onClick={isPlaying ? stopAudio : playAudio}
               disabled={isPlaying}
               className="flex-shrink-0 p-1 rounded-full hover:bg-white/10 transition-colors duration-200 disabled:opacity-50"
-              title="Play audio"
+              title={isPlaying ? "Stop audio" : "Play audio"}
             >
               {isPlaying ? (
                 <VolumeX className="w-4 h-4 text-white/70" />

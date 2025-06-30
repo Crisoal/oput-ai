@@ -3,8 +3,10 @@ import { Send } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageBubble } from './MessageBubble';
 import { VoiceRecorder } from './VoiceRecorder';
-import { Message, ConversationContext } from '../types';
+import { VoiceSettings } from './VoiceSettings';
+import { Message, ConversationContext, UserProfile } from '../types';
 import { GeminiService } from '../lib/gemini';
+import { SupabaseService } from '../lib/supabaseService';
 
 interface ChatInterfaceProps {
   onOpportunitiesFound: (opportunities: any[]) => void;
@@ -21,6 +23,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onOpportunitiesFou
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [autoPlayVoice, setAutoPlayVoice] = useState(true);
   const [context, setContext] = useState<ConversationContext>({
     current_stage: 'greeting',
     collected_info: {},
@@ -30,6 +33,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onOpportunitiesFou
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const geminiService = new GeminiService();
+  const supabaseService = new SupabaseService();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -38,6 +42,109 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onOpportunitiesFou
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  const extractUserInfo = (conversation: Message[]): Partial<UserProfile> => {
+    const info: Partial<UserProfile> = {};
+    const conversationText = conversation.map(m => m.content).join(' ').toLowerCase();
+
+    // Extract academic level
+    if (conversationText.includes('phd') || conversationText.includes('doctoral')) {
+      info.academic_level = 'phd';
+    } else if (conversationText.includes('graduate') || conversationText.includes('master')) {
+      info.academic_level = 'graduate';
+    } else if (conversationText.includes('undergraduate') || conversationText.includes('bachelor')) {
+      info.academic_level = 'undergraduate';
+    }
+
+    // Extract field of study
+    const fields = ['computer science', 'engineering', 'medicine', 'business', 'physics', 'chemistry', 'biology', 'mathematics', 'artificial intelligence', 'machine learning'];
+    for (const field of fields) {
+      if (conversationText.includes(field)) {
+        info.field_of_study = field;
+        break;
+      }
+    }
+
+    // Extract country preferences
+    const countries = ['germany', 'united states', 'canada', 'united kingdom', 'australia', 'netherlands', 'sweden', 'france'];
+    for (const country of countries) {
+      if (conversationText.includes(country)) {
+        info.country = country;
+        break;
+      }
+    }
+
+    // Extract GPA if mentioned
+    const gpaMatch = conversationText.match(/gpa[:\s]*(\d+\.?\d*)/);
+    if (gpaMatch) {
+      info.current_gpa = parseFloat(gpaMatch[1]);
+    }
+
+    return info;
+  };
+
+  const searchOpportunities = async (userInfo: Partial<UserProfile>) => {
+    try {
+      const searchFilters: any = {};
+      
+      if (userInfo.academic_level) {
+        searchFilters.level = userInfo.academic_level;
+      }
+      if (userInfo.field_of_study) {
+        searchFilters.field = userInfo.field_of_study;
+      }
+      if (userInfo.country) {
+        searchFilters.country = userInfo.country;
+      }
+      if (userInfo.current_gpa) {
+        searchFilters.gpa_requirement = userInfo.current_gpa;
+      }
+
+      const opportunities = await supabaseService.searchOpportunities(searchFilters);
+      
+      // Calculate match scores and create matches
+      const opportunitiesWithScores = opportunities.map(opp => {
+        const matchScore = supabaseService.calculateMatchScore(userInfo as UserProfile, opp);
+        return {
+          ...opp,
+          matchScore,
+          action_items: generateActionItems(opp, userInfo),
+        };
+      });
+
+      // Sort by match score and take top results
+      const topOpportunities = opportunitiesWithScores
+        .sort((a, b) => b.matchScore - a.matchScore)
+        .slice(0, 5);
+
+      return topOpportunities;
+    } catch (error) {
+      console.error('Error searching opportunities:', error);
+      return [];
+    }
+  };
+
+  const generateActionItems = (opportunity: any, userInfo: Partial<UserProfile>): string[] => {
+    const items = [];
+    
+    items.push('Review eligibility requirements carefully');
+    items.push('Prepare academic transcripts');
+    
+    if (opportunity.type === 'research' || opportunity.level === 'phd') {
+      items.push('Draft research proposal');
+      items.push('Contact potential supervisors');
+    }
+    
+    if (opportunity.gpa_requirement && userInfo.current_gpa && userInfo.current_gpa < opportunity.gpa_requirement) {
+      items.push('Consider improving GPA before applying');
+    }
+    
+    items.push('Gather letters of recommendation');
+    items.push('Write personal statement');
+    items.push('Submit application before deadline');
+    
+    return items;
+  };
 
   const handleSendMessage = async (content: string) => {
     if (!content.trim() || isLoading) return;
@@ -54,12 +161,20 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onOpportunitiesFou
     setIsLoading(true);
 
     try {
-      // Update context based on user input
-      const updatedContext = { ...context, last_query: content.trim() };
+      // Extract user information from conversation
+      const updatedMessages = [...messages, userMessage];
+      const userInfo = extractUserInfo(updatedMessages);
+      
+      // Update context
+      const updatedContext = { 
+        ...context, 
+        last_query: content.trim(),
+        collected_info: { ...context.collected_info, ...userInfo }
+      };
       
       // Generate AI response
       const response = await geminiService.generateResponse(
-        [...messages, userMessage].map(m => ({ role: m.role, content: m.content })),
+        updatedMessages.map(m => ({ role: m.role, content: m.content })),
         updatedContext
       );
 
@@ -73,48 +188,30 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onOpportunitiesFou
       setMessages(prev => [...prev, assistantMessage]);
       setContext(updatedContext);
 
-      // Mock opportunity matching logic
-      if (content.toLowerCase().includes('phd') || 
-          content.toLowerCase().includes('scholarship') || 
-          content.toLowerCase().includes('funding')) {
-        // Simulate finding opportunities
-        setTimeout(() => {
-          const mockOpportunities = [
-            {
-              id: '1',
-              title: 'NSF Graduate Research Fellowship',
-              institution: 'National Science Foundation',
-              type: 'fellowship',
-              field: 'Computer Science',
-              level: 'graduate',
-              country: 'United States',
-              deadline: '2024-12-15',
-              funding_amount: 37000,
-              description: 'The NSF Graduate Research Fellowship Program supports outstanding graduate students in NSF-supported STEM disciplines.',
-              application_url: 'https://www.nsfgrfp.org/',
-              requirements: ['US Citizen', 'GPA 3.5+', 'STEM Field'],
-              eligibility_criteria: ['Graduate student', 'Research proposal'],
-              created_at: '2024-01-01'
-            },
-            {
-              id: '2',
-              title: 'Fulbright Student Program',
-              institution: 'U.S. Department of State',
-              type: 'scholarship',
-              field: 'Various',
-              level: 'graduate',
-              country: 'Various',
-              deadline: '2024-10-10',
-              funding_amount: 25000,
-              description: 'The Fulbright Student Program provides grants for U.S. graduating seniors, graduate students, and young professionals.',
-              application_url: 'https://us.fulbrightonline.org/',
-              requirements: ['US Citizen', 'Bachelor\'s degree', 'Language skills'],
-              eligibility_criteria: ['Study abroad', 'Cultural exchange'],
-              created_at: '2024-01-01'
-            }
-          ];
-          onOpportunitiesFound(mockOpportunities);
-        }, 1500);
+      // Check if we have enough info to search for opportunities
+      if (userInfo.academic_level && userInfo.field_of_study && 
+          (content.toLowerCase().includes('find') || 
+           content.toLowerCase().includes('search') || 
+           content.toLowerCase().includes('show') ||
+           content.toLowerCase().includes('recommend'))) {
+        
+        // Search for opportunities
+        const opportunities = await searchOpportunities(userInfo);
+        
+        if (opportunities.length > 0) {
+          onOpportunitiesFound(opportunities);
+          
+          // Add a follow-up message about found opportunities
+          setTimeout(() => {
+            const followUpMessage: Message = {
+              id: (Date.now() + 2).toString(),
+              role: 'assistant',
+              content: `Great! I found ${opportunities.length} opportunities that match your profile. You can view them in the Results tab. The top match is "${opportunities[0].title}" with a ${opportunities[0].matchScore}% compatibility score. Would you like me to explain why this opportunity is a good fit for you?`,
+              timestamp: new Date(),
+            };
+            setMessages(prev => [...prev, followUpMessage]);
+          }, 1000);
+        }
       }
 
     } catch (error) {
@@ -144,6 +241,14 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onOpportunitiesFou
 
   return (
     <div className="flex flex-col h-full">
+      {/* Voice Settings */}
+      <div className="p-4 border-b border-white/10 flex justify-end">
+        <VoiceSettings
+          autoPlay={autoPlayVoice}
+          onAutoPlayChange={setAutoPlayVoice}
+        />
+      </div>
+
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         <AnimatePresence>
@@ -152,6 +257,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onOpportunitiesFou
               key={message.id}
               message={message}
               isLatest={message.id === messages[messages.length - 1]?.id}
+              autoPlay={autoPlayVoice && message.role === 'assistant'}
             />
           ))}
         </AnimatePresence>
@@ -169,7 +275,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onOpportunitiesFou
                   <div className="w-2 h-2 bg-white/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                   <div className="w-2 h-2 bg-white/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                 </div>
-                <span className="text-white/60 text-sm">Oput is typing...</span>
+                <span className="text-white/60 text-sm">Oput is thinking...</span>
               </div>
             </div>
           </motion.div>

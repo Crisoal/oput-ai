@@ -1,20 +1,67 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { MessageSquare, Target, Sparkles } from 'lucide-react';
+import { MessageSquare, Target, Sparkles, FileText } from 'lucide-react';
 import { ChatInterface } from './components/ChatInterface';
 import { OpportunityResults } from './components/OpportunityResults';
+import { ScholarshipTracker } from './components/ScholarshipTracker';
 import { BoltBadge } from './components/BoltBadge';
-import { Opportunity } from './types';
+import { Opportunity, OpportunityMatch } from './types';
+import { SupabaseService } from './lib/supabaseService';
 
 function App() {
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
-  const [activeTab, setActiveTab] = useState<'chat' | 'results'>('chat');
+  const [trackedOpportunities, setTrackedOpportunities] = useState<(OpportunityMatch & { opportunity: Opportunity })[]>([]);
+  const [activeTab, setActiveTab] = useState<'chat' | 'results' | 'tracker'>('chat');
+  const supabaseService = new SupabaseService();
 
   const handleOpportunitiesFound = (newOpportunities: Opportunity[]) => {
     setOpportunities(newOpportunities);
+    
+    // Create tracked opportunities with match data
+    const trackedOps = newOpportunities.map((opp, index) => ({
+      id: `match_${Date.now()}_${index}`,
+      user_id: 'demo_user', // In real app, this would be the authenticated user ID
+      opportunity_id: opp.id,
+      match_score: (opp as any).matchScore || Math.floor(Math.random() * 30) + 70,
+      success_probability: Math.floor(Math.random() * 40) + 60,
+      eligibility_status: 'eligible' as const,
+      action_items: (opp as any).action_items || [
+        'Review eligibility requirements',
+        'Prepare academic transcripts',
+        'Write personal statement',
+        'Submit application before deadline'
+      ],
+      is_bookmarked: false,
+      application_status: 'not_started' as const,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      opportunity: opp
+    }));
+    
+    setTrackedOpportunities(prev => {
+      // Merge with existing, avoiding duplicates
+      const existing = prev.filter(tracked => 
+        !trackedOps.some(newOp => newOp.opportunity.id === tracked.opportunity.id)
+      );
+      return [...existing, ...trackedOps];
+    });
+    
     if (newOpportunities.length > 0) {
       setActiveTab('results');
     }
+  };
+
+  const handleUpdateStatus = async (matchId: string, status: string) => {
+    setTrackedOpportunities(prev => 
+      prev.map(tracked => 
+        tracked.id === matchId 
+          ? { ...tracked, application_status: status as any, updated_at: new Date().toISOString() }
+          : tracked
+      )
+    );
+    
+    // In a real app, you would also update the database
+    // await supabaseService.updateMatchStatus(matchId, { application_status: status });
   };
 
   return (
@@ -62,6 +109,22 @@ function App() {
                     </span>
                   )}
                 </button>
+                <button
+                  onClick={() => setActiveTab('tracker')}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                    activeTab === 'tracker'
+                      ? 'bg-white/10 text-white'
+                      : 'text-white/60 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <FileText className="w-4 h-4" />
+                  Tracker
+                  {trackedOpportunities.length > 0 && (
+                    <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">
+                      {trackedOpportunities.length}
+                    </span>
+                  )}
+                </button>
               </div>
               
               <BoltBadge variant="white" />
@@ -81,10 +144,17 @@ function App() {
             transition={{ duration: 0.3 }}
             className="h-full"
           >
-            {activeTab === 'chat' ? (
+            {activeTab === 'chat' && (
               <ChatInterface onOpportunitiesFound={handleOpportunitiesFound} />
-            ) : (
+            )}
+            {activeTab === 'results' && (
               <OpportunityResults opportunities={opportunities} />
+            )}
+            {activeTab === 'tracker' && (
+              <ScholarshipTracker 
+                opportunities={trackedOpportunities}
+                onUpdateStatus={handleUpdateStatus}
+              />
             )}
           </motion.div>
         </div>

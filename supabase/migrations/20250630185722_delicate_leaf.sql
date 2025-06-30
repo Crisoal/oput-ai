@@ -1,0 +1,223 @@
+/*
+  # Sample Opportunities Data
+
+  1. Purpose
+    - Insert sample scholarship, grant, and fellowship opportunities
+    - Provide realistic data for testing the platform
+    - Cover various academic levels, fields, and countries
+
+  2. Data Structure
+    - Real-world inspired opportunities
+    - Diverse funding amounts and requirements
+    - Various deadlines and eligibility criteria
+*/
+
+-- Insert sample opportunities
+INSERT INTO opportunities (
+  title,
+  institution,
+  type,
+  field,
+  level,
+  country,
+  deadline,
+  funding_amount,
+  requirements,
+  eligibility_criteria,
+  gpa_requirement,
+  citizenship_requirements,
+  language_requirements,
+  description
+) VALUES 
+(
+  'NSF Graduate Research Fellowship',
+  'National Science Foundation',
+  'fellowship',
+  'Computer Science',
+  'graduate',
+  'United States',
+  '2024-10-15',
+  37000,
+  'Research proposal, Academic transcripts, Letters of recommendation',
+  '{"research_experience": true, "academic_excellence": true}',
+  3.5,
+  ARRAY['United States'],
+  '{"english": "native"}',
+  'The NSF Graduate Research Fellowship Program supports outstanding graduate students in NSF-supported STEM disciplines who are pursuing research-based master''s and doctoral degrees.'
+),
+(
+  'DAAD Study Scholarship',
+  'German Academic Exchange Service',
+  'scholarship',
+  'Engineering',
+  'graduate',
+  'Germany',
+  '2024-11-30',
+  25000,
+  'Academic transcripts, Language certificate, Research proposal',
+  '{"academic_excellence": true, "language_proficiency": true}',
+  3.0,
+  ARRAY['Any'],
+  '{"german": "B2", "english": "B2"}',
+  'DAAD scholarships enable foreign graduates to pursue a master''s degree at a German university and to obtain a university qualification.'
+),
+(
+  'Rhodes Scholarship',
+  'Rhodes Trust',
+  'scholarship',
+  'Various',
+  'graduate',
+  'United Kingdom',
+  '2024-09-30',
+  50000,
+  'Academic transcripts, Personal statement, Letters of recommendation, Interview',
+  '{"leadership": true, "academic_excellence": true, "service": true}',
+  3.7,
+  ARRAY['United States', 'Canada', 'Australia', 'South Africa'],
+  '{"english": "native"}',
+  'The Rhodes Scholarship is an international postgraduate award for students to study at the University of Oxford.'
+),
+(
+  'Fulbright Student Program',
+  'U.S. Department of State',
+  'scholarship',
+  'Various',
+  'graduate',
+  'Various',
+  '2024-10-10',
+  30000,
+  'Academic transcripts, Personal statement, Language evaluation, Project proposal',
+  '{"cultural_exchange": true, "academic_merit": true}',
+  3.0,
+  ARRAY['United States'],
+  '{"english": "native", "host_language": "intermediate"}',
+  'The Fulbright Student Program provides grants for U.S. graduating seniors, graduate students, and young professionals to study abroad.'
+),
+(
+  'Marie Curie Fellowship',
+  'European Commission',
+  'fellowship',
+  'Physics',
+  'phd',
+  'Various',
+  '2024-12-15',
+  45000,
+  'Research proposal, CV, Letters of recommendation, Host agreement',
+  '{"research_excellence": true, "mobility": true}',
+  NULL,
+  ARRAY['Any'],
+  '{"english": "B2"}',
+  'Marie Skłodowska-Curie Actions fund excellent research and innovation and equip researchers with new knowledge and skills.'
+),
+(
+  'Gates Cambridge Scholarship',
+  'Gates Cambridge Trust',
+  'scholarship',
+  'Various',
+  'graduate',
+  'United Kingdom',
+  '2024-12-01',
+  45000,
+  'Academic transcripts, Research proposal, Personal statement, Letters of recommendation',
+  '{"academic_excellence": true, "leadership": true, "commitment_to_improving_lives": true}',
+  3.8,
+  ARRAY['Any except UK'],
+  '{"english": "C1"}',
+  'Gates Cambridge Scholarships are awarded to outstanding applicants from countries outside the UK to pursue a full-time postgraduate degree in any subject available at the University of Cambridge.'
+),
+(
+  'Chevening Scholarship',
+  'UK Government',
+  'scholarship',
+  'Various',
+  'graduate',
+  'United Kingdom',
+  '2024-11-07',
+  35000,
+  'Academic transcripts, Personal statement, Letters of recommendation, Work experience',
+  '{"leadership_potential": true, "academic_excellence": true, "networking_skills": true}',
+  3.0,
+  ARRAY['Chevening-eligible countries'],
+  '{"english": "B2"}',
+  'Chevening Scholarships are the UK government''s global scholarship programme, funded by the Foreign and Commonwealth Office and partner organisations.'
+),
+(
+  'Schwarzman Scholars',
+  'Schwarzman Scholars Program',
+  'scholarship',
+  'Various',
+  'graduate',
+  'China',
+  '2024-09-15',
+  40000,
+  'Academic transcripts, Personal essays, Letters of recommendation, Interview',
+  '{"leadership": true, "academic_excellence": true, "global_perspective": true}',
+  3.5,
+  ARRAY['Any'],
+  '{"english": "C1"}',
+  'Schwarzman Scholars is designed to prepare the next generation of global leaders for the geopolitical landscape of the 21st century.'
+),
+(
+  'Erasmus Mundus Joint Master',
+  'European Union',
+  'scholarship',
+  'Computer Science',
+  'graduate',
+  'Various',
+  '2024-12-31',
+  28000,
+  'Academic transcripts, Personal statement, Letters of recommendation, Language certificates',
+  '{"academic_excellence": true, "mobility": true}',
+  3.2,
+  ARRAY['Any'],
+  '{"english": "B2"}',
+  'Erasmus Mundus Joint Master Degrees are prestigious, integrated, international study programmes, jointly delivered by an international consortium of higher education institutions.'
+),
+(
+  'Commonwealth Scholarship',
+  'Commonwealth Scholarship Commission',
+  'scholarship',
+  'Medicine',
+  'phd',
+  'United Kingdom',
+  '2024-12-15',
+  35000,
+  'Academic transcripts, Research proposal, Letters of recommendation, Development impact statement',
+  '{"academic_merit": true, "development_potential": true}',
+  3.5,
+  ARRAY['Commonwealth countries'],
+  '{"english": "B2"}',
+  'Commonwealth Scholarships are for talented individuals with the potential to make a positive impact on the global stage.'
+),
+(
+  'AAUW International Fellowship',
+  'American Association of University Women',
+  'fellowship',
+  'Various',
+  'graduate',
+  'United States',
+  '2024-11-15',
+  20000,
+  'Academic transcripts, Personal statement, Letters of recommendation, Research proposal',
+  '{"academic_excellence": true, "commitment_to_women_advancement": true}',
+  3.0,
+  ARRAY['Non-US citizens'],
+  '{"english": "B2"}',
+  'AAUW International Fellowships support women pursuing full-time graduate or postdoctoral study in the United States.'
+),
+(
+  'Vanier Canada Graduate Scholarship',
+  'Government of Canada',
+  'scholarship',
+  'Various',
+  'phd',
+  'Canada',
+  '2024-11-01',
+  50000,
+  'Academic transcripts, Research proposal, Letters of recommendation, Leadership statement',
+  '{"academic_excellence": true, "research_potential": true, "leadership": true}',
+  3.7,
+  ARRAY['Any'],
+  '{"english": "C1", "french": "optional"}',
+  'The Vanier CGS program attracts and retains world-class doctoral students and establishes Canada as a global centre of excellence in research and higher learning.'
+);
