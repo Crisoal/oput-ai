@@ -34,26 +34,67 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     try {
       setIsPlaying(true);
       
+      // Always cancel any existing speech synthesis first
+      if ('speechSynthesis' in window) {
+        speechSynthesis.cancel();
+      }
+      
       // Check if ElevenLabs is configured
       const apiKey = import.meta.env.VITE_ELEVENLABS_API_KEY;
       
       if (apiKey) {
-        const elevenlabs = new ElevenLabsService();
-        const audioBuffer = await elevenlabs.textToSpeech(message.content);
-        
-        const audioBlob = new Blob([audioBuffer], { type: 'audio/mpeg' });
-        const audioUrl = URL.createObjectURL(audioBlob);
-        const audio = new Audio(audioUrl);
-        
-        audio.onended = () => {
-          setIsPlaying(false);
-          URL.revokeObjectURL(audioUrl);
-        };
-        
-        await audio.play();
+        try {
+          const elevenlabs = new ElevenLabsService();
+          const audioBuffer = await elevenlabs.textToSpeech(message.content);
+          
+          const audioBlob = new Blob([audioBuffer], { type: 'audio/mpeg' });
+          const audioUrl = URL.createObjectURL(audioBlob);
+          const audio = new Audio(audioUrl);
+          
+          audio.onended = () => {
+            setIsPlaying(false);
+            URL.revokeObjectURL(audioUrl);
+          };
+          
+          audio.onerror = () => {
+            setIsPlaying(false);
+            URL.revokeObjectURL(audioUrl);
+            throw new Error('Audio playback failed');
+          };
+          
+          await audio.play();
+        } catch (elevenLabsError) {
+          console.warn('ElevenLabs failed, falling back to Web Speech API:', elevenLabsError);
+          // Fall back to Web Speech API if ElevenLabs fails
+          if ('speechSynthesis' in window) {
+            // Cancel any existing speech before starting new one
+            speechSynthesis.cancel();
+            
+            const utterance = new SpeechSynthesisUtterance(message.content);
+            utterance.rate = 0.9;
+            utterance.pitch = 1;
+            utterance.volume = 0.8;
+            
+            utterance.onend = () => {
+              setIsPlaying(false);
+            };
+            
+            utterance.onerror = () => {
+              setIsPlaying(false);
+              setAudioError(true);
+            };
+            
+            speechSynthesis.speak(utterance);
+          } else {
+            throw new Error('Speech synthesis not supported');
+          }
+        }
       } else {
-        // Fallback to Web Speech API
+        // Fallback to Web Speech API when no ElevenLabs API key
         if ('speechSynthesis' in window) {
+          // Cancel any existing speech before starting new one
+          speechSynthesis.cancel();
+          
           const utterance = new SpeechSynthesisUtterance(message.content);
           utterance.rate = 0.9;
           utterance.pitch = 1;
@@ -61,6 +102,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           
           utterance.onend = () => {
             setIsPlaying(false);
+          };
+          
+          utterance.onerror = () => {
+            setIsPlaying(false);
+            setAudioError(true);
           };
           
           speechSynthesis.speak(utterance);
