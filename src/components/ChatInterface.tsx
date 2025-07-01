@@ -23,6 +23,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [autoPlayVoice, setAutoPlayVoice] = useState(true);
+  const [hasProvidedOpportunities, setHasProvidedOpportunities] = useState(false);
   const [context, setContext] = useState<ConversationContext>({
     current_stage: 'greeting',
     collected_info: {},
@@ -42,23 +43,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     scrollToBottom();
   }, [messages]);
 
-  // Load all opportunities from database on component mount
-  useEffect(() => {
-    const loadDatabaseOpportunities = async () => {
-      try {
-        const allOpportunities = await supabaseService.getAllOpportunities();
-        if (allOpportunities.length > 0) {
-          // Store in localStorage for persistence
-          localStorage.setItem('oput_all_opportunities', JSON.stringify(allOpportunities));
-        }
-      } catch (error) {
-        console.error('Error loading database opportunities:', error);
-      }
-    };
-
-    loadDatabaseOpportunities();
-  }, []);
-
   const extractUserInfo = (conversation: Message[]): Partial<UserProfile> => {
     const info: Partial<UserProfile> = {};
     const conversationText = conversation.map(m => m.content).join(' ').toLowerCase();
@@ -73,7 +57,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }
 
     // Extract field of study
-    const fields = ['computer science', 'engineering', 'medicine', 'business', 'physics', 'chemistry', 'biology', 'mathematics', 'artificial intelligence', 'machine learning'];
+    const fields = ['computer science', 'engineering', 'medicine', 'business', 'physics', 'chemistry', 'biology', 'mathematics', 'artificial intelligence', 'machine learning', 'cybersecurity'];
     for (const field of fields) {
       if (conversationText.includes(field)) {
         info.field_of_study = field;
@@ -96,6 +80,15 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       info.current_gpa = parseFloat(gpaMatch[1]);
     }
 
+    // Extract citizenship
+    const citizenships = ['nigerian', 'american', 'canadian', 'british', 'german', 'australian'];
+    for (const citizenship of citizenships) {
+      if (conversationText.includes(citizenship)) {
+        info.citizenship = citizenship.replace('nigerian', 'Nigeria').replace('american', 'United States').replace('canadian', 'Canada').replace('british', 'United Kingdom').replace('german', 'Germany').replace('australian', 'Australia');
+        break;
+      }
+    }
+
     return info;
   };
 
@@ -115,11 +108,22 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       if (userInfo.current_gpa) {
         searchFilters.gpa_requirement = userInfo.current_gpa;
       }
+      if (userInfo.citizenship) {
+        searchFilters.citizenship = userInfo.citizenship;
+      }
 
+      // Get opportunities from Supabase database only
       const opportunities = await supabaseService.searchOpportunities(searchFilters);
       
+      // Filter out expired opportunities (only show currently open ones)
+      const currentDate = new Date();
+      const openOpportunities = opportunities.filter(opp => {
+        const deadline = new Date(opp.deadline);
+        return deadline > currentDate;
+      });
+
       // Calculate match scores and create matches
-      const opportunitiesWithScores = opportunities.map(opp => {
+      const opportunitiesWithScores = openOpportunities.map(opp => {
         const matchScore = supabaseService.calculateMatchScore(userInfo as UserProfile, opp);
         return {
           ...opp,
@@ -140,19 +144,29 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }
   };
 
-  const shouldSearchForOpportunities = (content: string, userInfo: Partial<UserProfile>) => {
+  const isProfileComplete = (userInfo: Partial<UserProfile>) => {
+    return userInfo.academic_level && userInfo.field_of_study && userInfo.citizenship;
+  };
+
+  const shouldProvideOpportunities = (content: string, userInfo: Partial<UserProfile>) => {
+    // Only provide opportunities if:
+    // 1. Profile is complete
+    // 2. User is asking for opportunities/recommendations
+    // 3. Haven't already provided opportunities in this session
+    
     const searchTriggers = [
       'find', 'search', 'show', 'recommend', 'suggest', 'look for',
-      'scholarship', 'fellowship', 'grant', 'opportunity', 'funding'
+      'scholarship', 'fellowship', 'grant', 'opportunity', 'funding',
+      'ready', 'provide', 'give me'
     ];
     
     const hasSearchTrigger = searchTriggers.some(trigger => 
       content.toLowerCase().includes(trigger)
     );
     
-    const hasMinimumInfo = userInfo.academic_level && userInfo.field_of_study;
+    const profileComplete = isProfileComplete(userInfo);
     
-    return hasSearchTrigger && hasMinimumInfo;
+    return hasSearchTrigger && profileComplete && !hasProvidedOpportunities;
   };
 
   const handleSendMessage = async (content: string) => {
@@ -187,37 +201,37 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         collected_info: { ...context.collected_info, ...userInfo }
       };
       
-      // Check if we should search for opportunities
-      const shouldSearch = shouldSearchForOpportunities(content, userInfo);
+      // Check if we should provide opportunities
+      const shouldProvide = shouldProvideOpportunities(content, userInfo);
       let opportunities: any[] = [];
       
-      if (shouldSearch) {
+      if (shouldProvide) {
         opportunities = await searchOpportunities(userInfo);
         
         if (opportunities.length > 0) {
           // Store opportunities in localStorage for persistence across tabs
-          const storedOpportunities = JSON.parse(localStorage.getItem('oput_opportunities') || '[]');
-          
-          // Merge new opportunities with existing ones, avoiding duplicates
-          const existingIds = new Set(storedOpportunities.map((opp: any) => opp.id));
-          const newOpportunities = opportunities.filter(opp => !existingIds.has(opp.id));
-          const allOpportunities = [...storedOpportunities, ...newOpportunities];
-          
-          // Store updated opportunities
-          localStorage.setItem('oput_opportunities', JSON.stringify(allOpportunities));
+          localStorage.setItem('oput_opportunities', JSON.stringify(opportunities));
           
           // Add opportunities to results immediately
-          onOpportunitiesFound(allOpportunities);
+          onOpportunitiesFound(opportunities);
           
           // Update context to include found opportunities
           updatedContext.opportunities_shown = opportunities.map(opp => opp.id);
           updatedContext.current_stage = 'results';
+          setHasProvidedOpportunities(true);
         }
       }
       
-      // Generate AI response with context about found opportunities
+      // Generate AI response with context about found opportunities and profile completeness
       const contextForAI = {
         ...updatedContext,
+        profile_complete: isProfileComplete(userInfo),
+        missing_info: {
+          academic_level: !userInfo.academic_level,
+          field_of_study: !userInfo.field_of_study,
+          citizenship: !userInfo.citizenship,
+          gpa: !userInfo.current_gpa
+        },
         found_opportunities: opportunities.length > 0 ? {
           count: opportunities.length,
           top_matches: opportunities.slice(0, 3).map(opp => ({
@@ -324,7 +338,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Ask me about scholarships, grants, or fellowships..."
+              placeholder="Tell me about your academic background and goals..."
               className="w-full bg-transparent text-white placeholder-white/50 resize-none outline-none text-sm leading-relaxed"
               rows={1}
               style={{ minHeight: '20px', maxHeight: '120px' }}

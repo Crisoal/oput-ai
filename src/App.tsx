@@ -16,7 +16,7 @@ function App() {
     {
       id: '1',
       role: 'assistant',
-      content: "Hello! I'm Oput, your AI assistant for discovering educational opportunities. I'll help you find scholarships, grants, and fellowships that match your profile perfectly.\n\nTo get started, could you tell me about your current academic level and field of study?",
+      content: "Hello! I'm Oput, your AI assistant for discovering educational opportunities. I'll help you find scholarships, grants, and fellowships that match your profile perfectly.\n\nTo get started, could you tell me about your current academic level? Are you an undergraduate, graduate student, or pursuing a PhD?",
       timestamp: new Date(),
       canPlayAudio: true,
     }
@@ -24,7 +24,7 @@ function App() {
   
   const supabaseService = new SupabaseService();
 
-  // Load opportunities from localStorage on component mount
+  // Load opportunities from localStorage on component mount (only if they exist)
   useEffect(() => {
     const storedOpportunities = localStorage.getItem('oput_opportunities');
     if (storedOpportunities) {
@@ -86,6 +86,7 @@ function App() {
     
     setTrackedOpportunities(trackedOps);
     
+    // Automatically switch to results tab when opportunities are found
     if (newOpportunities.length > 0) {
       setActiveTab('results');
     }
