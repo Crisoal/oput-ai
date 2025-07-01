@@ -28,7 +28,7 @@ export class SupabaseService {
     }
   }
 
-  // Opportunity queries
+  // Enhanced opportunity search with better filtering
   async searchOpportunities(filters: {
     level?: string;
     field?: string;
@@ -38,28 +38,83 @@ export class SupabaseService {
     citizenship?: string;
   }): Promise<Opportunity[]> {
     try {
+      console.log('Searching with filters:', filters);
+      
       let query = supabase
         .from('opportunities')
         .select('*');
 
+      // Academic level filter
       if (filters.level) {
         query = query.eq('level', filters.level);
       }
+
+      // Field of study filter - more flexible matching
       if (filters.field) {
-        query = query.ilike('field', `%${filters.field}%`);
+        // Handle specific field mappings
+        let searchField = filters.field.toLowerCase();
+        
+        // Map common variations
+        if (searchField.includes('computer science') || searchField.includes('cs')) {
+          query = query.or(`field.ilike.%Computer Science%,field.ilike.%Cybersecurity%,field.ilike.%Various%`);
+        } else if (searchField.includes('cybersecurity')) {
+          query = query.or(`field.ilike.%Cybersecurity%,field.ilike.%Computer Science%,field.ilike.%Various%`);
+        } else if (searchField.includes('engineering')) {
+          query = query.or(`field.ilike.%Engineering%,field.ilike.%Various%`);
+        } else if (searchField.includes('medicine')) {
+          query = query.or(`field.ilike.%Medicine%,field.ilike.%Various%`);
+        } else if (searchField.includes('business')) {
+          query = query.or(`field.ilike.%Business%,field.ilike.%Various%`);
+        } else {
+          // Generic field search
+          query = query.or(`field.ilike.%${filters.field}%,field.ilike.%Various%`);
+        }
       }
+
+      // Country filter
       if (filters.country) {
         query = query.eq('country', filters.country);
       }
+
+      // Type filter
       if (filters.type) {
         query = query.eq('type', filters.type);
       }
+
+      // GPA requirement filter - only show opportunities user is eligible for
       if (filters.gpa_requirement) {
         query = query.or(`gpa_requirement.is.null,gpa_requirement.lte.${filters.gpa_requirement}`);
       }
+
+      // Citizenship filter - more comprehensive
       if (filters.citizenship) {
-        query = query.or(`citizenship_requirements.cs.{${filters.citizenship}},citizenship_requirements.cs.{Any}`);
+        const citizenship = filters.citizenship;
+        
+        // Build citizenship filter conditions
+        const conditions = [
+          `citizenship_requirements.cs.{${citizenship}}`,
+          `citizenship_requirements.cs.{Any}`,
+          `citizenship_requirements.cs.{"Any"}`,
+          `citizenship_requirements.is.null`
+        ];
+
+        // Add specific conditions for common citizenships
+        if (citizenship === 'Nigeria') {
+          conditions.push(`citizenship_requirements.cs.{"Commonwealth countries"}`);
+          conditions.push(`citizenship_requirements.cs.{"Non-US citizens"}`);
+        } else if (citizenship === 'United States') {
+          conditions.push(`citizenship_requirements.cs.{"United States"}`);
+        } else if (['Ghana', 'Kenya', 'India'].includes(citizenship)) {
+          conditions.push(`citizenship_requirements.cs.{"Commonwealth countries"}`);
+          conditions.push(`citizenship_requirements.cs.{"Non-US citizens"}`);
+        }
+
+        query = query.or(conditions.join(','));
       }
+
+      // Only get currently open opportunities
+      const currentDate = new Date().toISOString().split('T')[0];
+      query = query.gte('deadline', currentDate);
 
       const { data, error } = await query.order('deadline', { ascending: true });
 
@@ -68,13 +123,18 @@ export class SupabaseService {
         return [];
       }
 
+      console.log('Raw search results:', data?.length || 0);
+
       // Transform the data to match our interface
-      return (data || []).map(opp => ({
+      const opportunities = (data || []).map(opp => ({
         ...opp,
         funding_amount: typeof opp.funding_amount === 'string' ? parseInt(opp.funding_amount) : opp.funding_amount,
         application_url: opp.application_url || `https://example.com/apply/${opp.id}`,
         requirements: typeof opp.requirements === 'string' ? opp.requirements : opp.requirements?.join(', ') || '',
       }));
+
+      console.log('Transformed opportunities:', opportunities.length);
+      return opportunities;
     } catch (error) {
       console.error('Error in searchOpportunities:', error);
       return [];
@@ -210,83 +270,98 @@ export class SupabaseService {
     }
   }
 
-  // Calculate match score based on user profile and opportunity
+  // Enhanced match score calculation
   calculateMatchScore(userProfile: UserProfile, opportunity: Opportunity): number {
     let score = 0;
-    let factors = 0;
+    let totalWeight = 0;
 
-    // Academic level match (30%)
+    // Academic level match (25%)
+    const levelWeight = 25;
     if (userProfile.academic_level === opportunity.level) {
-      score += 30;
+      score += levelWeight;
     } else if (
       (userProfile.academic_level === 'graduate' && opportunity.level === 'phd') ||
       (userProfile.academic_level === 'undergraduate' && opportunity.level === 'graduate')
     ) {
-      score += 20;
+      score += levelWeight * 0.7; // 70% match for adjacent levels
     }
-    factors += 30;
+    totalWeight += levelWeight;
 
-    // Field of study match (25%)
+    // Field of study match (30%)
+    const fieldWeight = 30;
     if (userProfile.field_of_study && opportunity.field) {
-      if (userProfile.field_of_study.toLowerCase().includes(opportunity.field.toLowerCase()) ||
-          opportunity.field.toLowerCase().includes(userProfile.field_of_study.toLowerCase())) {
-        score += 25;
-      } else if (this.isRelatedField(userProfile.field_of_study, opportunity.field)) {
-        score += 15;
+      const userField = userProfile.field_of_study.toLowerCase();
+      const oppField = opportunity.field.toLowerCase();
+      
+      if (oppField === 'various') {
+        score += fieldWeight * 0.8; // 80% match for "Various" fields
+      } else if (userField === oppField) {
+        score += fieldWeight; // Perfect match
+      } else if (userField.includes(oppField) || oppField.includes(userField)) {
+        score += fieldWeight * 0.9; // 90% match for partial matches
+      } else if (this.isRelatedField(userField, oppField)) {
+        score += fieldWeight * 0.6; // 60% match for related fields
       }
     }
-    factors += 25;
+    totalWeight += fieldWeight;
 
     // GPA requirement (20%)
+    const gpaWeight = 20;
     if (opportunity.gpa_requirement && userProfile.current_gpa) {
       if (userProfile.current_gpa >= opportunity.gpa_requirement) {
-        score += 20;
+        const excess = userProfile.current_gpa - opportunity.gpa_requirement;
+        score += gpaWeight * Math.min(1, 0.8 + (excess * 0.1)); // Bonus for higher GPA
       } else if (userProfile.current_gpa >= opportunity.gpa_requirement - 0.3) {
-        score += 10;
+        score += gpaWeight * 0.5; // 50% match if close to requirement
       }
     } else if (!opportunity.gpa_requirement) {
-      score += 15;
+      score += gpaWeight * 0.9; // 90% match if no GPA requirement
     }
-    factors += 20;
+    totalWeight += gpaWeight;
 
-    // Citizenship requirements (15%)
+    // Citizenship requirements (20%)
+    const citizenshipWeight = 20;
     if (opportunity.citizenship_requirements && userProfile.citizenship) {
-      if (opportunity.citizenship_requirements.includes(userProfile.citizenship) ||
-          opportunity.citizenship_requirements.includes('Any')) {
-        score += 15;
+      const requirements = opportunity.citizenship_requirements;
+      if (requirements.includes(userProfile.citizenship) || 
+          requirements.includes('Any') ||
+          (userProfile.citizenship === 'Nigeria' && requirements.includes('Commonwealth countries')) ||
+          (userProfile.citizenship !== 'United States' && requirements.includes('Non-US citizens'))) {
+        score += citizenshipWeight;
       }
     } else if (!opportunity.citizenship_requirements) {
-      score += 10;
+      score += citizenshipWeight * 0.8; // 80% match if no citizenship requirement
     }
-    factors += 15;
+    totalWeight += citizenshipWeight;
 
-    // Country preference (10%)
+    // Country preference (5%)
+    const countryWeight = 5;
     if (userProfile.country && opportunity.country) {
       if (userProfile.country === opportunity.country) {
-        score += 10;
+        score += countryWeight;
       } else if (this.isNearbyCountry(userProfile.country, opportunity.country)) {
-        score += 5;
+        score += countryWeight * 0.5;
       }
     }
-    factors += 10;
+    totalWeight += countryWeight;
 
-    return Math.round((score / factors) * 100);
+    const finalScore = Math.round((score / totalWeight) * 100);
+    return Math.max(0, Math.min(100, finalScore)); // Ensure score is between 0-100
   }
 
   private isRelatedField(field1: string, field2: string): boolean {
     const relatedFields = {
-      'computer science': ['artificial intelligence', 'machine learning', 'data science', 'software engineering'],
-      'engineering': ['mechanical engineering', 'electrical engineering', 'civil engineering'],
+      'computer science': ['cybersecurity', 'artificial intelligence', 'machine learning', 'data science', 'software engineering'],
+      'cybersecurity': ['computer science', 'information security', 'network security'],
+      'engineering': ['mechanical engineering', 'electrical engineering', 'civil engineering', 'computer science'],
       'business': ['management', 'finance', 'marketing', 'economics'],
       'medicine': ['biology', 'chemistry', 'health sciences', 'biomedical'],
+      'artificial intelligence': ['computer science', 'machine learning', 'data science'],
     };
 
-    const f1 = field1.toLowerCase();
-    const f2 = field2.toLowerCase();
-
     for (const [key, related] of Object.entries(relatedFields)) {
-      if ((f1.includes(key) && related.some(r => f2.includes(r))) ||
-          (f2.includes(key) && related.some(r => f1.includes(r)))) {
+      if ((field1.includes(key) && related.some(r => field2.includes(r))) ||
+          (field2.includes(key) && related.some(r => field1.includes(r)))) {
         return true;
       }
     }
@@ -296,9 +371,10 @@ export class SupabaseService {
 
   private isNearbyCountry(country1: string, country2: string): boolean {
     const regions = {
-      'europe': ['germany', 'france', 'italy', 'spain', 'netherlands', 'sweden', 'norway', 'denmark'],
+      'europe': ['germany', 'france', 'italy', 'spain', 'netherlands', 'sweden', 'norway', 'denmark', 'united kingdom'],
       'north_america': ['united states', 'canada', 'mexico'],
       'asia': ['china', 'japan', 'south korea', 'singapore', 'india'],
+      'africa': ['nigeria', 'ghana', 'kenya', 'south africa'],
     };
 
     const c1 = country1.toLowerCase();
@@ -313,25 +389,50 @@ export class SupabaseService {
     return false;
   }
 
-  // Generate action items for an opportunity
+  // Enhanced action items generation
   generateActionItems(opportunity: Opportunity, userProfile: Partial<UserProfile>): string[] {
     const items = [];
     
-    items.push('Review eligibility requirements carefully');
-    items.push('Prepare academic transcripts');
+    // Basic requirements
+    items.push('Review complete eligibility requirements');
+    items.push('Prepare official academic transcripts');
     
+    // GPA-specific advice
+    if (opportunity.gpa_requirement && userProfile.current_gpa) {
+      if (userProfile.current_gpa < opportunity.gpa_requirement) {
+        items.push(`Improve GPA to meet ${opportunity.gpa_requirement} requirement`);
+      } else {
+        items.push('Highlight your strong academic performance');
+      }
+    }
+    
+    // Field-specific requirements
     if (opportunity.type === 'research' || opportunity.level === 'phd') {
-      items.push('Draft research proposal');
-      items.push('Contact potential supervisors');
+      items.push('Draft a compelling research proposal');
+      items.push('Contact potential supervisors or mentors');
+      items.push('Prepare research portfolio or publications');
     }
     
-    if (opportunity.gpa_requirement && userProfile.current_gpa && userProfile.current_gpa < opportunity.gpa_requirement) {
-      items.push('Consider improving GPA before applying');
+    // Language requirements
+    if (opportunity.language_requirements) {
+      items.push('Prepare required language proficiency certificates');
     }
     
-    items.push('Gather letters of recommendation');
-    items.push('Write personal statement');
-    items.push('Submit application before deadline');
+    // Application materials
+    items.push('Secure 2-3 strong letters of recommendation');
+    items.push('Write a compelling personal statement');
+    items.push('Prepare CV/resume highlighting relevant experience');
+    
+    // Deadline management
+    const deadline = new Date(opportunity.deadline);
+    const today = new Date();
+    const daysLeft = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (daysLeft <= 30) {
+      items.push(`URGENT: Submit application before ${deadline.toLocaleDateString()} (${daysLeft} days left)`);
+    } else {
+      items.push(`Submit application before deadline: ${deadline.toLocaleDateString()}`);
+    }
     
     return items;
   }

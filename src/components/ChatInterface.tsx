@@ -48,52 +48,102 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     const conversationText = conversation.map(m => m.content).join(' ').toLowerCase();
 
     // Extract academic level
-    if (conversationText.includes('phd') || conversationText.includes('doctoral')) {
+    if (conversationText.includes('phd') || conversationText.includes('doctoral') || conversationText.includes('doctorate')) {
       info.academic_level = 'phd';
-    } else if (conversationText.includes('graduate') || conversationText.includes('master')) {
+    } else if (conversationText.includes('graduate') || conversationText.includes('master') || conversationText.includes('masters')) {
       info.academic_level = 'graduate';
-    } else if (conversationText.includes('undergraduate') || conversationText.includes('bachelor')) {
+    } else if (conversationText.includes('undergraduate') || conversationText.includes('bachelor') || conversationText.includes('bachelors')) {
       info.academic_level = 'undergraduate';
     }
 
-    // Extract field of study
-    const fields = ['computer science', 'engineering', 'medicine', 'business', 'physics', 'chemistry', 'biology', 'mathematics', 'artificial intelligence', 'machine learning', 'cybersecurity'];
-    for (const field of fields) {
-      if (conversationText.includes(field)) {
+    // Extract field of study - more comprehensive
+    const fieldMappings = {
+      'computer science': ['computer science', 'cs', 'computing', 'software engineering', 'software development'],
+      'cybersecurity': ['cybersecurity', 'cyber security', 'information security', 'network security'],
+      'engineering': ['engineering', 'mechanical engineering', 'electrical engineering', 'civil engineering'],
+      'medicine': ['medicine', 'medical', 'healthcare', 'health sciences', 'biomedical'],
+      'business': ['business', 'management', 'mba', 'finance', 'marketing', 'economics'],
+      'physics': ['physics', 'theoretical physics', 'applied physics'],
+      'chemistry': ['chemistry', 'biochemistry', 'chemical engineering'],
+      'biology': ['biology', 'life sciences', 'biotechnology', 'molecular biology'],
+      'mathematics': ['mathematics', 'math', 'statistics', 'applied mathematics'],
+      'artificial intelligence': ['artificial intelligence', 'ai', 'machine learning', 'ml', 'data science'],
+    };
+
+    for (const [field, keywords] of Object.entries(fieldMappings)) {
+      if (keywords.some(keyword => conversationText.includes(keyword))) {
         info.field_of_study = field;
         break;
       }
     }
 
+    // Extract citizenship/nationality - more comprehensive
+    const citizenshipMappings = {
+      'Nigeria': ['nigerian', 'nigeria', 'from nigeria'],
+      'United States': ['american', 'usa', 'us citizen', 'united states', 'from america'],
+      'Canada': ['canadian', 'canada', 'from canada'],
+      'United Kingdom': ['british', 'uk', 'united kingdom', 'from uk', 'from britain'],
+      'Germany': ['german', 'germany', 'from germany'],
+      'Australia': ['australian', 'australia', 'from australia'],
+      'India': ['indian', 'india', 'from india'],
+      'Ghana': ['ghanaian', 'ghana', 'from ghana'],
+      'Kenya': ['kenyan', 'kenya', 'from kenya'],
+      'South Africa': ['south african', 'south africa', 'from south africa'],
+    };
+
+    for (const [country, keywords] of Object.entries(citizenshipMappings)) {
+      if (keywords.some(keyword => conversationText.includes(keyword))) {
+        info.citizenship = country;
+        break;
+      }
+    }
+
     // Extract country preferences
-    const countries = ['germany', 'united states', 'canada', 'united kingdom', 'australia', 'netherlands', 'sweden', 'france'];
-    for (const country of countries) {
-      if (conversationText.includes(country)) {
+    const countryPreferences = {
+      'Germany': ['germany', 'german universities'],
+      'United States': ['united states', 'usa', 'america', 'us universities'],
+      'Canada': ['canada', 'canadian universities'],
+      'United Kingdom': ['united kingdom', 'uk', 'britain', 'british universities'],
+      'Australia': ['australia', 'australian universities'],
+      'Netherlands': ['netherlands', 'holland'],
+      'Sweden': ['sweden', 'swedish universities'],
+      'France': ['france', 'french universities'],
+    };
+
+    for (const [country, keywords] of Object.entries(countryPreferences)) {
+      if (keywords.some(keyword => conversationText.includes(keyword))) {
         info.country = country;
         break;
       }
     }
 
     // Extract GPA if mentioned
-    const gpaMatch = conversationText.match(/gpa[:\s]*(\d+\.?\d*)/);
-    if (gpaMatch) {
-      info.current_gpa = parseFloat(gpaMatch[1]);
-    }
+    const gpaPatterns = [
+      /gpa[:\s]*(\d+\.?\d*)/,
+      /grade point average[:\s]*(\d+\.?\d*)/,
+      /cgpa[:\s]*(\d+\.?\d*)/,
+      /(\d+\.?\d*)[:\s]*gpa/,
+      /(\d+\.?\d*)[:\s]*out of[:\s]*4/,
+    ];
 
-    // Extract citizenship
-    const citizenships = ['nigerian', 'american', 'canadian', 'british', 'german', 'australian'];
-    for (const citizenship of citizenships) {
-      if (conversationText.includes(citizenship)) {
-        info.citizenship = citizenship.replace('nigerian', 'Nigeria').replace('american', 'United States').replace('canadian', 'Canada').replace('british', 'United Kingdom').replace('german', 'Germany').replace('australian', 'Australia');
-        break;
+    for (const pattern of gpaPatterns) {
+      const match = conversationText.match(pattern);
+      if (match) {
+        const gpa = parseFloat(match[1]);
+        if (gpa >= 0 && gpa <= 4.0) {
+          info.current_gpa = gpa;
+          break;
+        }
       }
     }
 
     return info;
   };
 
-  const searchOpportunities = async (userInfo: Partial<UserProfile>) => {
+  const searchAndStoreOpportunities = async (userInfo: Partial<UserProfile>) => {
     try {
+      console.log('Searching opportunities with user info:', userInfo);
+      
       const searchFilters: any = {};
       
       if (userInfo.academic_level) {
@@ -112,8 +162,11 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         searchFilters.citizenship = userInfo.citizenship;
       }
 
+      console.log('Search filters:', searchFilters);
+
       // Get opportunities from Supabase database only
       const opportunities = await supabaseService.searchOpportunities(searchFilters);
+      console.log('Found opportunities from database:', opportunities.length);
       
       // Filter out expired opportunities (only show currently open ones)
       const currentDate = new Date();
@@ -121,6 +174,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         const deadline = new Date(opp.deadline);
         return deadline > currentDate;
       });
+
+      console.log('Open opportunities after filtering:', openOpportunities.length);
 
       // Calculate match scores and create matches
       const opportunitiesWithScores = openOpportunities.map(opp => {
@@ -135,7 +190,15 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       // Sort by match score and take top results
       const topOpportunities = opportunitiesWithScores
         .sort((a, b) => b.matchScore - a.matchScore)
-        .slice(0, 8);
+        .slice(0, 12); // Increased to 12 for better selection
+
+      console.log('Top opportunities with scores:', topOpportunities.length);
+
+      // Store opportunities in localStorage for persistence
+      if (topOpportunities.length > 0) {
+        localStorage.setItem('oput_opportunities', JSON.stringify(topOpportunities));
+        console.log('Stored opportunities in localStorage');
+      }
 
       return topOpportunities;
     } catch (error) {
@@ -156,8 +219,9 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     
     const searchTriggers = [
       'find', 'search', 'show', 'recommend', 'suggest', 'look for',
-      'scholarship', 'fellowship', 'grant', 'opportunity', 'funding',
-      'ready', 'provide', 'give me'
+      'scholarship', 'fellowship', 'grant', 'opportunity', 'opportunities', 'funding',
+      'ready', 'provide', 'give me', 'help me find', 'can you find',
+      'yes', 'sure', 'okay', 'ok', 'please', 'go ahead'
     ];
     
     const hasSearchTrigger = searchTriggers.some(trigger => 
@@ -194,6 +258,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       const updatedMessages = [...messages, userMessage];
       const userInfo = extractUserInfo(updatedMessages);
       
+      console.log('Extracted user info:', userInfo);
+      
       // Update context
       const updatedContext = { 
         ...context, 
@@ -203,14 +269,16 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       
       // Check if we should provide opportunities
       const shouldProvide = shouldProvideOpportunities(content, userInfo);
+      console.log('Should provide opportunities:', shouldProvide);
+      
       let opportunities: any[] = [];
       
       if (shouldProvide) {
-        opportunities = await searchOpportunities(userInfo);
+        console.log('Searching for personalized opportunities...');
+        opportunities = await searchAndStoreOpportunities(userInfo);
         
         if (opportunities.length > 0) {
-          // Store opportunities in localStorage for persistence across tabs
-          localStorage.setItem('oput_opportunities', JSON.stringify(opportunities));
+          console.log('Found and storing opportunities:', opportunities.length);
           
           // Add opportunities to results immediately
           onOpportunitiesFound(opportunities);
@@ -219,6 +287,10 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           updatedContext.opportunities_shown = opportunities.map(opp => opp.id);
           updatedContext.current_stage = 'results';
           setHasProvidedOpportunities(true);
+          
+          console.log('Opportunities provided to results section');
+        } else {
+          console.log('No opportunities found matching criteria');
         }
       }
       
@@ -238,7 +310,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
             title: opp.title,
             institution: opp.institution,
             match_score: opp.matchScore,
-            country: opp.country
+            country: opp.country,
+            funding_amount: opp.funding_amount
           }))
         } : null
       };
@@ -264,7 +337,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: 'I apologize, but I encountered an error. Please try again or check your API configuration.',
+        content: 'I apologize, but I encountered an error while searching for opportunities. Please try again or check your API configuration.',
         timestamp: new Date(),
         canPlayAudio: true,
       };
@@ -321,7 +394,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                   <div className="w-2 h-2 bg-white/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                   <div className="w-2 h-2 bg-white/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                 </div>
-                <span className="text-white/60 text-sm">Oput is thinking...</span>
+                <span className="text-white/60 text-sm">Oput is searching for personalized opportunities...</span>
               </div>
             </div>
           </motion.div>
