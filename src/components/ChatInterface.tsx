@@ -8,7 +8,6 @@ import { Message, ConversationContext, UserProfile, Opportunity } from '../types
 import { GeminiService } from '../lib/gemini';
 import { SupabaseService } from '../lib/supabaseService';
 import { ElevenLabsService } from '../lib/elevenlabs';
-import { cybersecurityOpportunities } from '../lib/mockOpportunities';
 
 interface ChatInterfaceProps {
   onOpportunitiesFound: (opportunities: Opportunity[]) => void;
@@ -74,34 +73,21 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }
 
     // Extract field of study
-    const fields = ['computer science', 'cybersecurity', 'cyber security', 'information security', 'network security', 'engineering', 'medicine', 'business', 'physics', 'chemistry', 'biology', 'mathematics', 'artificial intelligence', 'machine learning'];
+    const fields = ['computer science', 'engineering', 'medicine', 'business', 'physics', 'chemistry', 'biology', 'mathematics', 'artificial intelligence', 'machine learning'];
     for (const field of fields) {
       if (conversationText.includes(field)) {
-        if (field.includes('cyber') || field.includes('security')) {
-          info.field_of_study = 'cybersecurity';
-        } else {
-          info.field_of_study = field;
-        }
+        info.field_of_study = field;
         break;
       }
     }
 
     // Extract country preferences
-    const countries = ['united kingdom', 'uk', 'britain', 'england', 'germany', 'united states', 'canada', 'australia', 'netherlands', 'sweden', 'france'];
+    const countries = ['germany', 'united states', 'canada', 'united kingdom', 'australia', 'netherlands', 'sweden', 'france'];
     for (const country of countries) {
       if (conversationText.includes(country)) {
-        if (country === 'uk' || country === 'britain' || country === 'england') {
-          info.country = 'United Kingdom';
-        } else {
-          info.country = country;
-        }
+        info.country = country;
         break;
       }
-    }
-
-    // Extract citizenship
-    if (conversationText.includes('nigerian') || conversationText.includes('nigeria')) {
-      info.citizenship = 'Nigeria';
     }
 
     // Extract GPA if mentioned
@@ -110,21 +96,11 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       info.current_gpa = parseFloat(gpaMatch[1]);
     }
 
-    // Extract percentage grades and convert to GPA
-    const percentageMatch = conversationText.match(/(\d+)%|\b(\d+)\s*percent/);
-    if (percentageMatch) {
-      const percentage = parseInt(percentageMatch[1] || percentageMatch[2]);
-      if (percentage >= 70) {
-        info.current_gpa = 3.5; // Good approximation for 80%
-      }
-    }
-
     return info;
   };
 
   const searchOpportunities = async (userInfo: Partial<UserProfile>) => {
     try {
-      // First try to get opportunities from database
       const searchFilters: any = {};
       
       if (userInfo.academic_level) {
@@ -140,33 +116,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         searchFilters.gpa_requirement = userInfo.current_gpa;
       }
 
-      let opportunities = await supabaseService.searchOpportunities(searchFilters);
-      
-      // If no database results or looking for cybersecurity, add mock opportunities
-      if (opportunities.length === 0 || userInfo.field_of_study === 'cybersecurity') {
-        // Filter cybersecurity opportunities based on user profile
-        const filteredCyberOpportunities = cybersecurityOpportunities.filter(opp => {
-          let matches = true;
-          
-          if (userInfo.academic_level && opp.level !== userInfo.academic_level) {
-            matches = false;
-          }
-          
-          if (userInfo.country && opp.country !== userInfo.country) {
-            matches = false;
-          }
-          
-          if (userInfo.citizenship && opp.citizenship_requirements && 
-              !opp.citizenship_requirements.includes(userInfo.citizenship) && 
-              !opp.citizenship_requirements.includes('Any')) {
-            matches = false;
-          }
-          
-          return matches;
-        });
-        
-        opportunities = [...opportunities, ...filteredCyberOpportunities];
-      }
+      const opportunities = await supabaseService.searchOpportunities(searchFilters);
       
       // Calculate match scores and create matches
       const opportunitiesWithScores = opportunities.map(opp => {
@@ -186,32 +136,21 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       return topOpportunities;
     } catch (error) {
       console.error('Error searching opportunities:', error);
-      // Fallback to cybersecurity opportunities if database fails
-      return cybersecurityOpportunities.map(opp => ({
-        ...opp,
-        matchScore: Math.floor(Math.random() * 30) + 70,
-        action_items: [
-          'Review eligibility requirements',
-          'Prepare academic transcripts',
-          'Write personal statement',
-          'Submit application before deadline'
-        ]
-      }));
+      return [];
     }
   };
 
   const shouldSearchForOpportunities = (content: string, userInfo: Partial<UserProfile>) => {
     const searchTriggers = [
       'find', 'search', 'show', 'recommend', 'suggest', 'look for',
-      'scholarship', 'fellowship', 'grant', 'opportunity', 'funding',
-      'cybersecurity', 'cyber security', 'uk', 'united kingdom'
+      'scholarship', 'fellowship', 'grant', 'opportunity', 'funding'
     ];
     
     const hasSearchTrigger = searchTriggers.some(trigger => 
       content.toLowerCase().includes(trigger)
     );
     
-    const hasMinimumInfo = userInfo.academic_level || userInfo.field_of_study || userInfo.country;
+    const hasMinimumInfo = userInfo.academic_level && userInfo.field_of_study;
     
     return hasSearchTrigger && hasMinimumInfo;
   };
