@@ -54,6 +54,15 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
     }
   };
 
+  const handleApplyClick = () => {
+    if (opportunity.application_url && opportunity.application_url !== `https://example.com/apply/${opportunity.id}`) {
+      window.open(opportunity.application_url, '_blank');
+    } else {
+      // If no valid URL, show a message
+      alert('Application URL not available. Please search for this opportunity online or contact the institution directly.');
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -89,7 +98,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
       <div className="grid grid-cols-2 gap-4 mb-4">
         <div className="flex items-center gap-2 text-white/70 text-sm">
           <DollarSign className="w-4 h-4" />
-          <span>{formatAmount(opportunity.funding_amount)}</span>
+          <span>{opportunity.funding_amount ? formatAmount(opportunity.funding_amount) : 'Amount varies'}</span>
         </div>
         <div className="flex items-center gap-2 text-white/70 text-sm">
           <MapPin className="w-4 h-4" />
@@ -97,11 +106,11 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
         </div>
         <div className="flex items-center gap-2 text-white/70 text-sm">
           <Calendar className="w-4 h-4" />
-          <span>{formatDeadline(opportunity.deadline)}</span>
+          <span>{opportunity.deadline ? formatDeadline(opportunity.deadline) : 'Check website'}</span>
         </div>
         <div className="flex items-center gap-2 text-white/70 text-sm">
           <GraduationCap className="w-4 h-4" />
-          <span>{opportunity.field}</span>
+          <span>{opportunity.field || 'Various fields'}</span>
         </div>
       </div>
 
@@ -142,7 +151,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({
           {opportunity.requirements ? opportunity.requirements.split(',').length : 0} requirements
         </div>
         <button
-          onClick={() => window.open(opportunity.application_url, '_blank')}
+          onClick={handleApplyClick}
           className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors duration-200"
         >
           Apply Now

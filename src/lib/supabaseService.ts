@@ -16,16 +16,38 @@ export class SupabaseService {
       }
 
       // Transform the data to match our interface
-      return (data || []).map(opp => ({
-        ...opp,
-        funding_amount: typeof opp.funding_amount === 'string' ? parseInt(opp.funding_amount) : opp.funding_amount,
-        application_url: opp.application_url || `https://example.com/apply/${opp.id}`,
-        requirements: typeof opp.requirements === 'string' ? opp.requirements : opp.requirements?.join(', ') || '',
-      }));
+      return (data || []).map(opp => this.transformOpportunity(opp));
     } catch (error) {
       console.error('Error in getAllOpportunities:', error);
       return [];
     }
+  }
+
+  // Transform database opportunity to match our interface
+  private transformOpportunity(opp: any): Opportunity {
+    return {
+      ...opp,
+      funding_amount: this.parseFundingAmount(opp.funding_amount),
+      application_url: opp.application_url || `https://example.com/apply/${opp.id}`,
+      requirements: typeof opp.requirements === 'string' ? opp.requirements : (opp.requirements?.join(', ') || ''),
+      citizenship_requirements: Array.isArray(opp.citizenship_requirements) ? opp.citizenship_requirements : [],
+      eligibility_criteria: opp.eligibility_criteria || {},
+      language_requirements: opp.language_requirements || {},
+      created_at: opp.created_at || new Date().toISOString(),
+      updated_at: opp.updated_at || new Date().toISOString(),
+    };
+  }
+
+  // Parse funding amount from various formats
+  private parseFundingAmount(amount: any): number {
+    if (typeof amount === 'number') return amount;
+    if (typeof amount === 'string') {
+      // Remove currency symbols and commas, extract numbers
+      const cleaned = amount.replace(/[^0-9.]/g, '');
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
   }
 
   // Enhanced opportunity search with better filtering
@@ -126,12 +148,7 @@ export class SupabaseService {
       console.log('Raw search results:', data?.length || 0);
 
       // Transform the data to match our interface
-      const opportunities = (data || []).map(opp => ({
-        ...opp,
-        funding_amount: typeof opp.funding_amount === 'string' ? parseInt(opp.funding_amount) : opp.funding_amount,
-        application_url: opp.application_url || `https://example.com/apply/${opp.id}`,
-        requirements: typeof opp.requirements === 'string' ? opp.requirements : opp.requirements?.join(', ') || '',
-      }));
+      const opportunities = (data || []).map(opp => this.transformOpportunity(opp));
 
       console.log('Transformed opportunities:', opportunities.length);
       return opportunities;
@@ -154,12 +171,7 @@ export class SupabaseService {
         return null;
       }
 
-      return {
-        ...data,
-        funding_amount: typeof data.funding_amount === 'string' ? parseInt(data.funding_amount) : data.funding_amount,
-        application_url: data.application_url || `https://example.com/apply/${data.id}`,
-        requirements: typeof data.requirements === 'string' ? data.requirements : data.requirements?.join(', ') || '',
-      };
+      return this.transformOpportunity(data);
     } catch (error) {
       console.error('Error in getOpportunityById:', error);
       return null;
@@ -329,7 +341,7 @@ export class SupabaseService {
           (userProfile.citizenship !== 'United States' && requirements.includes('Non-US citizens'))) {
         score += citizenshipWeight;
       }
-    } else if (!opportunity.citizenship_requirements) {
+    } else if (!opportunity.citizenship_requirements || opportunity.citizenship_requirements.length === 0) {
       score += citizenshipWeight * 0.8; // 80% match if no citizenship requirement
     }
     totalWeight += citizenshipWeight;
@@ -424,14 +436,16 @@ export class SupabaseService {
     items.push('Prepare CV/resume highlighting relevant experience');
     
     // Deadline management
-    const deadline = new Date(opportunity.deadline);
-    const today = new Date();
-    const daysLeft = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    
-    if (daysLeft <= 30) {
-      items.push(`URGENT: Submit application before ${deadline.toLocaleDateString()} (${daysLeft} days left)`);
-    } else {
-      items.push(`Submit application before deadline: ${deadline.toLocaleDateString()}`);
+    if (opportunity.deadline) {
+      const deadline = new Date(opportunity.deadline);
+      const today = new Date();
+      const daysLeft = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (daysLeft <= 30) {
+        items.push(`URGENT: Submit application before ${deadline.toLocaleDateString()} (${daysLeft} days left)`);
+      } else {
+        items.push(`Submit application before deadline: ${deadline.toLocaleDateString()}`);
+      }
     }
     
     return items;

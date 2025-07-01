@@ -22,7 +22,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 }) => {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [autoPlayVoice, setAutoPlayVoice] = useState(true);
+  const [autoPlayVoice, setAutoPlayVoice] = useState(false); // Changed to false by default
   const [hasProvidedOpportunities, setHasProvidedOpportunities] = useState(false);
   const [context, setContext] = useState<ConversationContext>({
     current_stage: 'greeting',
@@ -171,6 +171,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       // Filter out expired opportunities (only show currently open ones)
       const currentDate = new Date();
       const openOpportunities = opportunities.filter(opp => {
+        if (!opp.deadline) return false;
         const deadline = new Date(opp.deadline);
         return deadline > currentDate;
       });
